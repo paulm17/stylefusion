@@ -1,0 +1,47 @@
+{
+  "name": "@stylefusion/nextjs-plugin",
+  "version": "0.0.1",
+  "main": "build/index.js",
+  "module": "build/index.mjs",
+  "types": "build/index.d.ts",
+  "author": "Paul Moss",
+  "description": "Next.js integration for StyleFusion",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulm17/stylefusion.git",
+    "directory": "packages/stylefusion-nextjs-plugin"
+  },
+  "license": "MIT",
+  "scripts": {
+    "clean": "rimraf build types",
+    "watch": "tsup --watch --tsconfig tsconfig.build.json",
+    "copy-license": "node ../../scripts/pigment-license.mjs",
+    "build": "tsup --tsconfig tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@stylefusion/unplugin": "workspace:*"
+  },
+  "devDependencies": {
+    "@stylefusion/unocss": "workspace:*",
+    "@types/node": "^20.11.30",
+    "@types/react": "^18.2.73",    
+    "next": "^13.5.1"
+  },
+  "peerDependencies": {
+    "next": "^12.0.0 || ^13.0.0 || ^14.0.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "build",
+    "loader.js",
+    "next-font.js",
+    "next-image.js",
+    "zero-virtual.css",
+    "package.json",
+    "LICENSE"
+  ]
+}

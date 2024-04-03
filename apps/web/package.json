@@ -1,0 +1,25 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "nextdev": "next dev",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@stylefusion/react": "workspace:*",
+    "@tabler/icons-react": "^2.25.0",
+    "next": "^13.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@stylefusion/nextjs-plugin": "workspace:*",
+    "@types/node": "20.5.1",
+    "@types/react": "^18.2.23",
+    "@types/react-dom": "^18.2.8",
+    "typescript": "5.1.6"
+  }
+}

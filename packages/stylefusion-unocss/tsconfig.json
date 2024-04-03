@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "target": "ES2022",
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["./tsup.config.ts"]
+}

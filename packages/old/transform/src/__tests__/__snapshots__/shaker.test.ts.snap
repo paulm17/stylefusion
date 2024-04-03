@@ -1,0 +1,30 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`shaker should carefully shake used exports 1`] = `
+""use strict";
+
+var _activeClass;
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.activeClass = void 0;
+_activeClass = "s1gxjcbn";
+exports.activeClass = _activeClass;
+const _exp = /*#__PURE__*/() => _activeClass;
+exports.__wywPreval = {
+  _exp: _exp
+};"
+`;
+
+exports[`shaker should remove enum 1`] = `
+""use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.__wywPreval = void 0;
+const _exp2 = /*#__PURE__*/() => "t2nn9pk";
+const __wywPreval = exports.__wywPreval = {
+  _exp2: _exp2
+};"
+`;
