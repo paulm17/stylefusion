@@ -72,13 +72,18 @@ function genStyleRootObj(cssClass: string) {
       const splitText = match[1].split("|");
 
       styleArray.push(splitText[0]?.replace("tmp:", "") || "");
-      rootArray.push(`\n${classDef.split("{")[0]}{${splitText[1]?.replace(";", "")}};`);
+
+      const rootText = splitText[1]?.replace(";", "") || "";
+
+      if (rootText.length > 0) {
+        rootArray.push(`\n${classDef.split("{")[0]}{${rootText}};`);
+      }
     }
   });
  
   return {
-     style: styleArray.join(" "),
-     root: `${rootArray.join(" ")}\n`,
+     style: styleArray.join(""),
+     root: `${rootArray.join("")}\n`,
   };
  }
  
