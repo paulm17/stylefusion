@@ -59,23 +59,47 @@ function processRoot(root: any) {
 
 // convert the markup from styles to unocss
 function genStyleRootObj(cssClass: string) {
-  // Regular expression to match text between curly braces
-  const regex = /{(.*?)}/;
-  const match = cssClass.match(regex);
+  const classDefinitions = cssClass.split('\n');
+ 
+  const styleArray: string[] = [];
+  const rootArray: string[] = [];
+ 
+  classDefinitions.forEach(classDef => {
+    const regex = /{(.*?)}/;
+    const match = classDef.match(regex);
 
-  if (match && match[1]) {
-    // Split the matched text using the pipe delimiter
-    const splitText = match[1].split("|");
+    if (match && match[1]) {
+      const splitText = match[1].split("|");
 
-    // Construct the return object
-    return {
-      style: splitText[0]?.replace("tmp:", "") || "",
-      root: `${cssClass.split("{")[0]}{${splitText[1]}}`,
-    };
-  }
+      styleArray.push(splitText[0]?.replace("tmp:", "") || "");
+      rootArray.push(`\n${classDef.split("{")[0]}{${splitText[1]?.replace(";", "")}};`);
+    }
+  });
+ 
+  return {
+     style: styleArray.join(" "),
+     root: `${rootArray.join(" ")}\n`,
+  };
+ }
+ 
+// function genStyleRootObj(cssClass: string) {
+//     // Regular expression to match text between curly braces
+//     const regex = /{(.*?)}/;
+//     const match = cssClass.match(regex);
 
-  return {style: "", root: ""};
-}
+//     if (match && match[1]) {
+//       // Split the matched text using the pipe delimiter
+//       const splitText = match[1].split("|");
+
+//       // Construct the return object
+//       return {
+//         style: splitText[0]?.replace("tmp:", "") || "",
+//         root: `${cssClass.split("{")[0]}{${splitText[1]}}`,
+//       };
+//     } 
+
+//     return {style: "", root: ""};
+// }
 
 // extract from code blocks in webpack
 function extractClassNames(code: string) {

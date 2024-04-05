@@ -68,13 +68,6 @@ export class CssProcessor extends BaseProcessor {
       throw new Error(`MUI: "${this.tagSource.imported}" is already built`);
     }
 
-    const styleObj = values.get("_exp") as Record<string, string>;
-    if (styleObj !== undefined) {
-      const { root, styles } = processStyles(styleObj);
-      this.styleRoot = root;
-      this.styleStr = styles;
-    }
-
     const [callType] = this.callParam;
 
     if (callType === 'template') {
@@ -122,7 +115,11 @@ export class CssProcessor extends BaseProcessor {
     });
     this.generateArtifacts(templateStrs, ...templateExpressions);
   }
-  async generateArtifacts(styleObjOrTaggged: CSSInterpolation | string[], ...args: Primitive[]) {  
+  async generateArtifacts(styleObjOrTaggged: any | string[], ...args: Primitive[]) {  
+    const { root, styles } = processStyles(styleObjOrTaggged);
+    this.styleRoot = root;
+    this.styleStr = styles;
+
     const rules: Rules = {
       [this.asSelector]: {
         className: this.className,

@@ -237,9 +237,9 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
       try {
         let unocssStyles = "";
 
-        if (id.endsWith("page.tsx")) {
+        if (id.endsWith(".tsx")) {
           unocssStyles = extractClassNames(code) as string;
-        }
+        }        
 
         const result = await transform(transformServices, code, asyncResolve);
 
@@ -248,7 +248,6 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         }
 
         let { cssText: resCssText } = result;
-
         let {style: cssText, root} = genStyleRootObj(resCssText);
 
         if (isNext && !outputCss) {
