@@ -49,12 +49,16 @@ function extractItems(input: string) {
 }
 
 function processRoot(root: any) {
-  const obj = Object.keys(root).map((key) => {
-    const value = root[key];
-    return `${key}: ${value};`;
-  });
+  if (Object.keys(root).length > 0) {
+    const obj = Object.keys(root).map((key) => {
+      const value = root[key];
+      return `${key}: ${value};`;
+    });
 
-  return obj.join(" ");
+    return obj.join("");
+  }
+
+  return "";
 }
 
 // convert the markup from styles to unocss
@@ -63,7 +67,7 @@ function genStyleRootObj(cssClass: string) {
  
   const styleArray: string[] = [];
   const rootArray: string[] = [];
- 
+
   classDefinitions.forEach(classDef => {
     const regex = /{(.*?)}/;
     const match = classDef.match(regex);
@@ -73,38 +77,22 @@ function genStyleRootObj(cssClass: string) {
 
       styleArray.push(splitText[0]?.replace("tmp:", "") || "");
 
-      const rootText = splitText[1]?.replace(";", "") || "";
+      if (splitText[1] !== ";") {
+        const rootText = splitText[1]?.split(";") || [];
 
-      if (rootText.length > 0) {
-        rootArray.push(`\n${classDef.split("{")[0]}{${rootText}};`);
+        if (rootText.length > 0) {
+          const rootTextStr = rootText?.map(item => `${item}`).join(";");
+          rootArray.push(`\n${classDef.split("{")[0]}{${rootTextStr}}`);
+        }
       }
     }
   });
  
   return {
-     style: styleArray.join(""),
+     style: styleArray.join(" "),
      root: `${rootArray.join("")}\n`,
   };
  }
- 
-// function genStyleRootObj(cssClass: string) {
-//     // Regular expression to match text between curly braces
-//     const regex = /{(.*?)}/;
-//     const match = cssClass.match(regex);
-
-//     if (match && match[1]) {
-//       // Split the matched text using the pipe delimiter
-//       const splitText = match[1].split("|");
-
-//       // Construct the return object
-//       return {
-//         style: splitText[0]?.replace("tmp:", "") || "",
-//         root: `${cssClass.split("{")[0]}{${splitText[1]}}`,
-//       };
-//     } 
-
-//     return {style: "", root: ""};
-// }
 
 // extract from code blocks in webpack
 function extractClassNames(code: string) {
