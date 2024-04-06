@@ -18,7 +18,13 @@ function processStyles(styles: Record<string, any>, prefix = "") {
 
 function processStylesLoop(styles: Record<string, any>, prefix = "") {
   let result = [] as string[];
-  for (const [key, value] of Object.entries(styles)) {
+  for (let [key, value] of Object.entries(styles)) {
+
+    // target classes
+    if (key.match(/&>./)) {
+      key = key.replace(/\s+/g, "")
+    }
+    
     if (typeof value === "object" && !Array.isArray(value) && value !== null) {
       // If the value is an object, recursively process it
       result.push(...processStylesLoop(value, `${key}:`));

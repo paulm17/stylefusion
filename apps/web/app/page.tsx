@@ -22,12 +22,30 @@ const styles3 = css({
   base: "text-green-900"
 })
 
+const root = css({
+  base: "bg-green-900"
+ })
+
+const selector = `not-only-child:first:[&>.${root}]`
+
+const style4 = css({
+  [selector]: [
+    "bg-green-500",
+    "font-bold"
+  ]
+});
+
 export default function Page() {
   return (
     <>
       <div className={styles}>hello 2</div>
       <div className={styles2}>hello 3</div>
       <div className={`${styles3} data-[active]:font-bold`}>hello 4</div>
+      <div className={style4}>
+        <button className={root}>hello</button>
+        <button className={root}>hello</button>
+        <button className={root}>hello</button>
+      </div>
     </>
     
   );
