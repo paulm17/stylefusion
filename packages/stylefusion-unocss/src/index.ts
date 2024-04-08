@@ -88,7 +88,10 @@ function genStyleRootObj(cssClass: string) {
 
       if (layerSplitText && layerSplitText.length > 1) {
         layer = layerSplitText.shift();
-        styleArray[layer!] = [];
+
+        if (!Object.keys(styleArray).includes(layer!)) {
+          styleArray[layer!] = [];
+        }
       }
 
       if (layerSplitText && layerSplitText.length > 0) {
@@ -173,8 +176,6 @@ function extractClassNames(code: string) {
 
   return `${stylesFromClassName.join(" ")} ${stylesFromClassNames.join(" ")}`.trim();
 }
-
-
 
 async function genUnoCSS(source: string) {
   const generator = createGenerator({
