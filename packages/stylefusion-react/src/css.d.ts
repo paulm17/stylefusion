@@ -47,7 +47,7 @@ type psudeoElement = "backdrop-element"
 | "first-letter"
 | "first-line"; 
 
-type StyleKeys = "root" | "base" | interactions | positional | content | forms | state | psudeoElement;
+type StyleKeys = "root" | "layer" | "base" | interactions | positional | content | forms | state | psudeoElement;
 type StyleValue = string | string[] | Record<string, string> | StyleObject;
 
 // Step 2: Create a Recursive Type for Nested Structures

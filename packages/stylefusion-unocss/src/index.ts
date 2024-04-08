@@ -4,7 +4,7 @@ import presetUno from '@unocss/preset-uno'
 // process the unocss styles
 function processStyles(styles: Record<string, any>, prefix = "") {
   // Extract the 'root' property and store it in a new variable
- const { root, ...rest } = styles;
+ const { root, layer, ...rest } = styles;
 
  let rootRes = "";
  if (root !== undefined) {
@@ -13,7 +13,7 @@ function processStyles(styles: Record<string, any>, prefix = "") {
 
  const stylesRes = processStylesLoop(rest, prefix);
 
- return { root: rootRes, styles: stylesRes.join(" ") };
+ return { root: rootRes, layer: layer !== undefined ? `${layer}#` : "", styles: stylesRes.join(" ") };
 }
 
 function processStylesLoop(styles: Record<string, any>, prefix = "") {
@@ -71,31 +71,55 @@ function processRoot(root: any) {
 function genStyleRootObj(cssClass: string) {
   const classDefinitions = cssClass.split('\n');
  
-  const styleArray: string[] = [];
+  const styleArray: Record<string, string[]> = {
+    default: [],
+  };
   const rootArray: string[] = [];
 
   classDefinitions.forEach(classDef => {
+    classDef = classDef.replace("tmp:", "");
+
     const regex = /{(.*?)}/;
     const match = classDef.match(regex);
 
     if (match && match[1]) {
-      const splitText = match[1].split("|");
+      let layer = undefined;
+      const layerSplitText = match[1].split("#");
 
-      styleArray.push(splitText[0]?.replace("tmp:", "") || "");
+      if (layerSplitText && layerSplitText.length > 1) {
+        layer = layerSplitText.shift();
+        styleArray[layer!] = [];
+      }
 
-      if (splitText[1] !== ";") {
-        const rootText = splitText[1]?.split(";") || [];
+      if (layerSplitText && layerSplitText.length > 0) {
+        const splitText = layerSplitText[0]?.split("|");
 
-        if (rootText.length > 0) {
-          const rootTextStr = rootText?.map(item => `${item}`).join(";");
-          rootArray.push(`\n${classDef.split("{")[0]}{${rootTextStr}}`);
+        if (splitText && splitText[0]) {
+          const newLayer = layer === undefined ? "default" : layer;
+
+          styleArray[newLayer]?.push(splitText[0]);
+        }
+
+        if (splitText && splitText[1] !== ";") {
+          const rootText = splitText[1]?.split(";") || [];
+
+          if (rootText.length > 0) {
+            const rootTextStr = rootText?.map(item => `${item}`).join(";");
+            rootArray.push(`\n${classDef.split("{")[0]}{${rootTextStr}}`);
+          }
         }
       }
     }
   });
- 
+
+  const StyleArrayString: Record<string, string> = {};
+
+  Object.keys(styleArray).forEach(key => {
+    StyleArrayString[key] = styleArray[key]!.join(' ');
+ });
+
   return {
-     style: styleArray.join(" "),
+     style: JSON.stringify(StyleArrayString),
      root: `${rootArray.join("")}\n`,
   };
  }
@@ -116,48 +140,41 @@ function extractClassNames(code: string) {
 
   // Step 3: Extract classNames
   const classNameMatches = singleLineCode.match(
-    /className:\s*["`](.*?)["`]/
+    /className:\s*["`](.*?)["`]/g
   );
 
   const classNamesMatches = singleLineCode.match(
-    /classNames:\s*{\s*([^}]*)\s*}/
+    /classNames:(\s*{\s*\w*:\s+{.*\s*}\s+})/gs
   );
 
-  let stylesFromClassName = "";
-  let stylesFromClassNames = "";
+  let stylesFromClassName = [] as string[];
+  let stylesFromClassNames = [] as string[];
 
   // get styles from ClassName
   if (classNameMatches !== null) {
-    stylesFromClassName = classNameMatches[0].replace(/className:\s*["`]/, "").replace(`\``, "").replace(/\$\{.*?\}/g, "");
+    classNameMatches.forEach((className) => {
+      stylesFromClassName.push(className.replace(/className:\s*["`]/, "").replace(`\``, "").replace(/\$\{.*?\}/g, ""));      
+    })
   }
 
   // get styles from ClassNames
   if (classNamesMatches !== null) {
-    const extractedValues = extractArrayValues(classNamesMatches[1]);
-    stylesFromClassNames = processStyles(extractedValues).styles;
+    classNamesMatches.forEach((className) => {
+      const str = className.replace(/classNames:\s+/, "").replace(/(\w+):/g, '"$1":');
+      const jsonStr = JSON.parse(str);
+      
+      Object.keys(jsonStr).forEach((key) => {
+        const styles = processStyles(jsonStr[key]).styles
+
+        stylesFromClassNames.push(styles);
+      });
+    });    
   }
 
-  return `${stylesFromClassName} ${stylesFromClassNames}`.trim();
+  return `${stylesFromClassName.join(" ")} ${stylesFromClassNames.join(" ")}`.trim();
 }
 
-function extractArrayValues(input: string | undefined) {
-  if (!input) return [];
 
-  const regex = /"([^"]+)":\s*"([^"]+)"/g;
-  const matches = [...input.matchAll(regex)];
-  const keyValues = {};
-
-  if (!matches) return [];
-  matches.forEach((match) => {
-    const key = match[1]; // The first capturing group is the key
-    const value = match[2]; // The second capturing group is the value
-
-    // @ts-ignore
-    keyValues[key] = value;
-  });
-
-  return keyValues;
-}
 
 async function genUnoCSS(source: string) {
   const generator = createGenerator({
@@ -173,4 +190,41 @@ async function genUnoCSS(source: string) {
   return css;
 }
 
-export { createGenerator, extractClassNames, genStyleRootObj, genUnoCSS, processStyles, presetUno };
+async function genLayers(source: string, root: string, classNameStyles: string) {
+  const layersArr = JSON.parse(source);
+
+  if (classNameStyles !== "") {
+    layersArr["classNames"] = classNameStyles;
+  }
+
+  const headers = Object.keys(layersArr).join(", ");
+
+  const allPromises = Object.keys(layersArr).map(async(layer) => {
+    const unocss = await genUnoCSS(layersArr[layer])
+
+    return `
+      @layer ${layer} {
+        ${layer === "default" ? root : ""}
+        ${unocss}
+      }
+    `
+  });
+
+  const allLayers = await Promise.all(allPromises);
+
+  const css = `
+    @layer ${headers};
+
+    ${allLayers.join("\n")}
+  `;
+
+  return css;
+}
+
+export { 
+  createGenerator, 
+  extractClassNames, 
+  genLayers, 
+  genStyleRootObj, 
+  processStyles
+};

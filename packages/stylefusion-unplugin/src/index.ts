@@ -24,7 +24,7 @@ import {
   type Theme as BaseTheme,
 } from '@stylefusion/react/utils';
 import type { ResolvePluginInstance } from 'webpack';
-import { extractClassNames, genStyleRootObj, processStyles } from "@stylefusion/unocss"
+import { extractClassNames, genLayers, genStyleRootObj } from "@stylefusion/unocss"
 
 type NextMeta = {
   type: 'next';
@@ -269,11 +269,11 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         // file with the actual CSS content as part of the query params.
 
         if (isNext) {
+          const layers = await genLayers(cssText, root, unocssStyles);
           const data = `${meta.placeholderCssFile}?${encodeURIComponent(
             JSON.stringify({
               filename: cssFilename,
-              source: `${cssText} ${unocssStyles}`,
-              root: root
+              source: layers,
             }),
           )}`;
           return {

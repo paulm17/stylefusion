@@ -12,7 +12,7 @@ const styles2 = css({
   root: {
     "--badge-bg": "text-magnolia-200"
   },
-  base: "bg-red-200 z-1 text-green-200"
+  base: "bg-red-400 z-1 text-green-200"
 })
 
 const styles3 = css({
@@ -35,18 +35,45 @@ const style4 = css({
   ]
 });
 
+const foo = css({
+  base: "bg-red-400 p-0"
+})
+
+const bar = css({
+  layer: "upper",
+  base: "bg-red-800 [padding:20px]"
+})
+
 export default function Page() {
   return (
     <>
       <div className={styles}>hello 2</div>
-      <div className={styles2}>hello 3</div>
-      <div className={`${styles3} data-[active]:font-bold`}>hello 4</div>
+      <div className={`${styles2}`}>hello 3</div>
+      <div className={`${styles3} data-[active]:font-bold`} data-active>hello 4</div>
       <div className={style4}>
         <button className={root}>hello</button>
         <button className={root}>hello</button>
         <button className={root}>hello</button>
       </div>
-    </>
-    
+      <div className={`${foo} ${bar}`}>foo</div>
+      <Badge classNames={{
+        root: { base: ["bg-green-100", "text-red-100"] },
+        section: { base: ["z-1"] },
+        label: { base: ["uppercase"] }
+      }}>Badge</Badge>
+    </>    
   );
+}
+
+interface badgeProps {
+  classNames?: any;
+  children: React.ReactNode;
+}
+
+function Badge({ classNames, children }: badgeProps) {
+  const allClassNames = Object.keys(classNames!).map((key) => classNames![key]).join(" ");
+
+  return (
+    <div className={allClassNames}>{children}</div>
+  )
 }

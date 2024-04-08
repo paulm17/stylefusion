@@ -116,14 +116,14 @@ export class CssProcessor extends BaseProcessor {
     this.generateArtifacts(templateStrs, ...templateExpressions);
   }
   async generateArtifacts(styleObjOrTaggged: any | string[], ...args: Primitive[]) {  
-    const { root, styles } = processStyles(styleObjOrTaggged);
+    const { root, layer, styles } = processStyles(styleObjOrTaggged);
     this.styleRoot = root;
     this.styleStr = styles;
 
     const rules: Rules = {
       [this.asSelector]: {
         className: this.className,
-        cssText: `tmp:${this.styleStr}|${this.styleRoot}`,
+        cssText: `tmp:${layer}${this.styleStr}|${this.styleRoot}`,
         displayName: this.displayName,
         start: this.location?.start ?? null,
       },
