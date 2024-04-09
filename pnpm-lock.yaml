@@ -34,13 +34,16 @@ importers:
         version: 3.2.5
       tsup:
         specifier: ^8.0.2
-        version: 8.0.2
+        version: 8.0.2(typescript@5.3.3)
       turbo:
         specifier: latest
         version: 1.13.0
 
   apps/web:
     dependencies:
+      '@acme/server':
+        specifier: workspace:*
+        version: link:../../packages/server
       '@stylefusion/react':
         specifier: workspace:*
         version: link:../../packages/stylefusion-react
@@ -95,6 +98,43 @@ importers:
         version: 1.1.0
       typescript:
         specifier: ^5.3.3
+        version: 5.3.3
+
+  packages/server:
+    dependencies:
+      '@acme/badge':
+        specifier: workspace:*
+        version: link:../ui/Badge
+      '@acme/button':
+        specifier: workspace:*
+        version: link:../ui/Button
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      tslib:
+        specifier: ^2.6.0
+        version: 2.6.2
+      type-fest:
+        specifier: ^4.0.0
+        version: 4.15.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.3.3
+        version: 20.11.30
+      '@types/react':
+        specifier: ^18.2.23
+        version: 18.2.73
+      '@types/react-dom':
+        specifier: ^18.2.8
+        version: 18.2.23
+      clean-package:
+        specifier: 2.2.0
+        version: 2.2.0
+      typescript:
+        specifier: ^5.1.6
         version: 5.3.3
 
   packages/stylefusion-nextjs-plugin:
@@ -273,6 +313,74 @@ importers:
 
   packages/typescript-config: {}
 
+  packages/ui/Badge:
+    dependencies:
+      '@stylefusion/react':
+        specifier: workspace:*
+        version: link:../../stylefusion-react
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      tslib:
+        specifier: ^2.6.0
+        version: 2.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.3.3
+        version: 20.11.30
+      '@types/react':
+        specifier: ^18.2.23
+        version: 18.2.73
+      '@types/react-dom':
+        specifier: ^18.2.8
+        version: 18.2.23
+      clean-package:
+        specifier: 2.2.0
+        version: 2.2.0
+      tsup:
+        specifier: ^8.0.2
+        version: 8.0.2(typescript@5.3.3)
+      typescript:
+        specifier: ^5.1.6
+        version: 5.3.3
+
+  packages/ui/Button:
+    dependencies:
+      '@stylefusion/react':
+        specifier: workspace:*
+        version: link:../../stylefusion-react
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      tslib:
+        specifier: ^2.6.0
+        version: 2.6.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.3.3
+        version: 20.11.30
+      '@types/react':
+        specifier: ^18.2.23
+        version: 18.2.73
+      '@types/react-dom':
+        specifier: ^18.2.8
+        version: 18.2.23
+      clean-package:
+        specifier: 2.2.0
+        version: 2.2.0
+      tsup:
+        specifier: ^8.0.2
+        version: 8.0.2(typescript@5.3.3)
+      typescript:
+        specifier: ^5.1.6
+        version: 5.3.3
+
 packages:
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -301,11 +409,6 @@ packages:
     dependencies:
       '@babel/highlight': 7.24.2
       picocolors: 1.0.0
-
-  /@babel/compat-data@7.24.1:
-    resolution: {integrity: sha512-Pc65opHDliVpRHuKfzI+gSA4zcgr65O4cl64fFJIWEEh8JoHIHh0Oez1Eo8Arz8zq/JhgKodQaxEwUPRtZylVA==}
-    engines: {node: '>=6.9.0'}
-    dev: true
 
   /@babel/compat-data@7.24.4:
     resolution: {integrity: sha512-vg8Gih2MLK+kOkHJp4gBEIkyaIi00jgWot2D9QOmmfLC8jINSOzmCLta6Bvz/JSBCqnegV0L80jhxkol5GWNfQ==}
@@ -383,7 +486,7 @@ packages:
     resolution: {integrity: sha512-y6EEzULok0Qvz8yyLkCvVX+02ic+By2UdOhylwUOvOn9dvYc9mKICJuuU1n1XBI02YWsNsnrY1kc6DVbjcXbtw==}
     engines: {node: '>=6.9.0'}
     dependencies:
-      '@babel/compat-data': 7.24.1
+      '@babel/compat-data': 7.24.4
       '@babel/helper-validator-option': 7.23.5
       browserslist: 4.22.1
       lru-cache: 5.1.1
@@ -2766,6 +2869,13 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /clean-package@2.2.0:
+    resolution: {integrity: sha512-vLv8kRqvh4smPDpqAYFPLEijTppAd/cfCz4yBcUGoVl/JKu6ZWKhlo+G/cAmwlSa29RudfBeuyiNEzas8bTwEQ==}
+    hasBin: true
+    dependencies:
+      dot-prop: 6.0.1
+    dev: true
+
   /clean-regexp@1.0.0:
     resolution: {integrity: sha512-GfisEZEJvzKrmGWkvfhgzcz/BllN1USeqD2V6tg14OAOgaCD2Z/PUEuxnAZ/nPvmaHRG7a8y77p1T/IRQ4D1Hw==}
     engines: {node: '>=4'}
@@ -3072,6 +3182,13 @@ packages:
       esutils: 2.0.3
     dev: true
 
+  /dot-prop@6.0.1:
+    resolution: {integrity: sha512-tE7ztYzXHIeyvc7N+hR3oi7FIbf/NIjVP9hmAt3yMXzrQ072/fpjGLx2GxNxGxUl5V73MEqYzioOMoVhGMJ5cA==}
+    engines: {node: '>=10'}
+    dependencies:
+      is-obj: 2.0.0
+    dev: true
+
   /dotenv@16.0.3:
     resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
     engines: {node: '>=12'}
@@ -3317,7 +3434,7 @@ packages:
       debug: 4.3.4
       enhanced-resolve: 5.15.0
       eslint: 8.57.0
-      eslint-module-utils: 2.8.0(@typescript-eslint/parser@6.17.0)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
+      eslint-module-utils: 2.8.0(@typescript-eslint/parser@6.17.0)(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0)
       eslint-plugin-import: 2.29.0(@typescript-eslint/parser@7.1.0)(eslint@8.57.0)
       fast-glob: 3.3.2
       get-tsconfig: 4.7.2
@@ -3330,7 +3447,7 @@ packages:
       - supports-color
     dev: true
 
-  /eslint-module-utils@2.8.0(@typescript-eslint/parser@6.17.0)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
+  /eslint-module-utils@2.8.0(@typescript-eslint/parser@6.17.0)(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1)(eslint@8.57.0):
     resolution: {integrity: sha512-aWajIYfsqCKRDgUfjEXNN/JlrzauMuSEy5sbd7WXbtW3EH6A6MpwEh42c7qD+MqQo9QMJ6fWLAeIJynx0g6OAw==}
     engines: {node: '>=4'}
     peerDependencies:
@@ -3354,6 +3471,7 @@ packages:
       '@typescript-eslint/parser': 6.17.0(eslint@8.57.0)(typescript@5.3.3)
       debug: 3.2.7
       eslint: 8.57.0
+      eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.17.0)(eslint-plugin-import@2.29.0)(eslint@8.57.0)
     transitivePeerDependencies:
       - supports-color
@@ -4315,6 +4433,11 @@ packages:
   /is-number@7.0.0:
     resolution: {integrity: sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==}
     engines: {node: '>=0.12.0'}
+
+  /is-obj@2.0.0:
+    resolution: {integrity: sha512-drqDG3cbczxxEJRoOXcOjtdp1J/lyp1mNn0xaznRs8+muBhgQcrnbspox5X5fOw0HnMnbfDzvnEMEtqDEJEo8w==}
+    engines: {node: '>=8'}
+    dev: true
 
   /is-path-inside@3.0.3:
     resolution: {integrity: sha512-Fd4gABb+ycGAmKou8eMftCupSir5lRxqf4aD/vd0cD2qc4HL07OjCeuHMr8Ro4CoMaeCKDB0/ECBOVWjTwUvPQ==}
@@ -5981,7 +6104,7 @@ packages:
   /tslib@2.6.2:
     resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
 
-  /tsup@8.0.2:
+  /tsup@8.0.2(typescript@5.3.3):
     resolution: {integrity: sha512-NY8xtQXdH7hDUAZwcQdY/Vzlw9johQsaqf7iwZ6g1DOUlFYQ5/AtVAjTvihhEyeRlGo4dLRVHtrRaL35M1daqQ==}
     engines: {node: '>=18'}
     hasBin: true
@@ -6014,6 +6137,7 @@ packages:
       source-map: 0.8.0-beta.0
       sucrase: 3.35.0
       tree-kill: 1.2.2
+      typescript: 5.3.3
     transitivePeerDependencies:
       - supports-color
       - ts-node
@@ -6134,6 +6258,11 @@ packages:
     resolution: {integrity: sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA==}
     engines: {node: '>=8'}
     dev: true
+
+  /type-fest@4.15.0:
+    resolution: {integrity: sha512-tB9lu0pQpX5KJq54g+oHOLumOx+pMep4RaM6liXh2PKmVRFF+/vAtUP0ZaJ0kOySfVNjF6doBWPHhBhISKdlIA==}
+    engines: {node: '>=16'}
+    dev: false
 
   /typed-array-buffer@1.0.0:
     resolution: {integrity: sha512-Y8KTSIglk9OZEr8zywiIHG/kmQ7KWyjseXs1CbSo8vC42w7hg2HgYTxSWwP0+is7bWDc1H+Fo026CpHFwm8tkw==}
@@ -6430,6 +6559,7 @@ packages:
   /which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
+    hasBin: true
     dependencies:
       isexe: 2.0.0
     dev: true

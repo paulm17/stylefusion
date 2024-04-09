@@ -1,9 +1,0 @@
-{
-  "name": "linaria-ui-library",
-  "version": "1.0.0",
-  "dependencies": {
-  },
-  "linaria": {
-    "components": "components/**/*"
-  }
-}

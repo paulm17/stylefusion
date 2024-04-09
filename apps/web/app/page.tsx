@@ -1,4 +1,6 @@
 import { css } from "@stylefusion/react";
+import { Button } from "@acme/server";
+import Box from "./components/Box";
 
 const styles = css({
   root: {
@@ -56,21 +58,23 @@ export default function Page() {
         <button className={root}>hello</button>
       </div>
       <div className={`${foo} ${bar}`}>foo</div>
-      <Badge classNames={{
+      <Alert classNames={{
         root: { base: ["bg-green-100", "text-red-100"] },
         section: { base: ["z-1"] },
         label: { base: ["uppercase"] }
-      }}>Badge</Badge>
+      }}>Alert</Alert>
+      <Button>hello Button</Button>
+      <Box />
     </>    
   );
 }
 
-interface badgeProps {
+interface alertProps {
   classNames?: any;
   children: React.ReactNode;
 }
 
-function Badge({ classNames, children }: badgeProps) {
+function Alert({ classNames, children }: alertProps) {
   const allClassNames = Object.keys(classNames!).map((key) => classNames![key]).join(" ");
 
   return (

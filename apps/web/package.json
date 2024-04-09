@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@acme/server": "workspace:*",
     "@stylefusion/react": "workspace:*",
     "@tabler/icons-react": "^2.25.0",
     "next": "^13.5.4",

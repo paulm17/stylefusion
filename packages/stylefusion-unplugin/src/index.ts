@@ -25,6 +25,8 @@ import {
 } from '@stylefusion/react/utils';
 import type { ResolvePluginInstance } from 'webpack';
 import { extractClassNames, genLayers, genStyleRootObj } from "@stylefusion/unocss"
+import os from 'node:os';
+import fsPromises from 'fs/promises';
 
 type NextMeta = {
   type: 'next';
@@ -54,6 +56,11 @@ export type PigmentOptions<Theme extends BaseTheme = BaseTheme> = {
   meta?: Meta;
   asyncResolve?: (...args: Parameters<AsyncResolver>) => Promise<string | null>;
   transformSx?: boolean;
+  // option to remove unused css from libraries
+  purge?: {
+    libraries: string[],
+    filename: string,
+  }
 } & Partial<WywInJsPluginOptions>;
 
 const extensions = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts'];
@@ -97,6 +104,18 @@ function outerNoop() {
   return innerNoop;
 }
 
+async function genComponentList(components: string) {
+  if (components !== "") {
+    const componentNames = await fsPromises.readFile(components, {
+      encoding: 'utf8',
+    });
+    
+    return componentNames.split(",");
+  }
+
+  return [];
+}  
+
 export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const {
     theme,
@@ -117,6 +136,9 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const cssFileLookup = meta?.type === 'next' ? globalCssFileLookup : new Map<string, string>();
   const isNext = meta?.type === 'next';
   const outputCss = isNext && meta.outputCss;
+  const allComponents = [] as string[];
+  const imports = [] as string[];
+  const cssFiles = new Set<string>();
   const babelTransformPlugin: UnpluginOptions = {
     name: 'zero-plugin-transform-babel',
     enforce: 'post',
@@ -153,10 +175,39 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     return asyncResolveFallback(what, importer, stack);
   };
 
+  const generateRandomString = (length = 8) => {
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+  }
+
+  async function checkFileExists(filePath: string) {
+    try {
+       await fsPromises.access(filePath, fsPromises.constants.F_OK);
+       return true; // File exists
+    } catch (error) {
+       return false; // File does not exist
+    }
+   }
+
   const wywInJSTransformPlugin: UnpluginOptions = {
     name: 'zero-plugin-transform-wyw-in-js',
     enforce: 'post',
     buildEnd() {
+      // clean up css files
+      if (cssFiles.size > 0) {
+        cssFiles.forEach(async(file) => {
+          const valid = await checkFileExists(file);
+          if (valid) {
+            fsPromises.unlink(file);        
+          }        
+        })
+        cssFiles.clear();
+      }
       onDone(process.cwd());
     },
     transformInclude(id) {      
@@ -234,10 +285,51 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         eventEmitter: emitter,
       };
 
+      // generate the imported list of components
+      const genValidImports = (code: string) => {
+        const imports = [] as string[];
+
+        if (options.purge && options.purge.libraries.length > 0) {
+          options.purge.libraries.forEach((library) => {
+            const regex = new RegExp(`import\\s+\\{\\s*([^}]+)\\s*\\}\\s+from\\s+['"]${library}\\/(server|client)['"]`, 'g');
+
+            let match;
+            while ((match = regex.exec(code)) !== null) {
+              if (match && match[1]) {
+                const items = match[1].split(',').map(item => item.trim());
+                const validImports = items.filter(item => allComponents.includes(item));
+                imports.push(...validImports);
+              }
+            }
+          });          
+        }
+
+        return imports;
+      }
+
+      const matchLibraryAndComponents = (line: string, library: string[], components: string[]) => {
+        const libraryMatch = library.some((lib) => line.includes(lib));
+        const componentsMatch = components.some((imp) => line.includes(imp));
+
+        return libraryMatch && componentsMatch;
+      }
+      
       try {
         let unocssStyles = "";
 
+        // load all components from purge option
+        if (options.purge && options.purge.filename) {
+          if (allComponents.length === 0) {
+            const componentList = await genComponentList(options.purge.filename);
+
+            allComponents.push(...componentList);
+          }
+        }
+
         if (id.endsWith(".tsx")) {
+          // retrieve validated imports
+          imports.push(...genValidImports(code));
+
           unocssStyles = extractClassNames(code) as string;
         }        
 
@@ -248,7 +340,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         }
 
         let { cssText: resCssText } = result;
-        let {style: cssText, root} = genStyleRootObj(resCssText);
+        let { style: cssText, root } = genStyleRootObj(resCssText);
 
         if (isNext && !outputCss) {
           return {
@@ -270,12 +362,46 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
 
         if (isNext) {
           const layers = await genLayers(cssText, root, unocssStyles);
-          const data = `${meta.placeholderCssFile}?${encodeURIComponent(
-            JSON.stringify({
-              filename: cssFilename,
-              source: layers,
-            }),
-          )}`;
+
+          // Use a file to pass styles to virtual-css-loader otherwise the placeholder duplicates
+          // the same styles :(
+          const fileName = `raikou_${generateRandomString()}.txt`;
+          const filePath = `${os.tmpdir()}/${fileName}`;
+          await fsPromises.writeFile(filePath, layers, { encoding: 'utf8', flag: 'w', mode: 0o666 });
+          cssFiles.add(fileName);
+
+          // Now determine whether some components need to be purged
+          let data = "";
+          const libraries = options.purge && options.purge.libraries || [];
+          const match = matchLibraryAndComponents(id, libraries, allComponents);
+
+          if (options.purge) {
+            if (match) {
+              const allowed = imports.some((imp) => id.includes(imp));
+
+              data = `${meta.placeholderCssFile}?${encodeURIComponent(
+                JSON.stringify({
+                  filename: cssFilename,
+                  source: allowed ? fileName : "",
+                }),
+              )}`;         
+            } else {
+              data = `${meta.placeholderCssFile}?${encodeURIComponent(
+                JSON.stringify({
+                  filename: cssFilename,
+                  source: fileName,
+                }),
+              )}`;         
+            }
+          } else {
+            data = `${meta.placeholderCssFile}?${encodeURIComponent(
+              JSON.stringify({
+                filename: cssFilename,
+                source: fileName,
+              }),
+            )}`;
+          }
+          
           return {
             // CSS import should be the last so that nested components produce correct CSS order injection.
             code: `${result.code}\nimport ${JSON.stringify(data)};`,
