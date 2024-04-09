@@ -308,7 +308,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
       }
 
       const matchLibraryAndComponents = (line: string, library: string[], components: string[]) => {
-        const libraryMatch = library.some((lib) => line.includes(lib));
+        const libraryMatch = library.some((lib) => line.includes(lib) || line.includes(lib.replace("@", "")));
         const componentsMatch = components.some((imp) => line.includes(imp));
 
         return libraryMatch && componentsMatch;
@@ -375,7 +375,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
           const libraries = options.purge && options.purge.libraries || [];
           const match = matchLibraryAndComponents(id, libraries, allComponents);
 
-          if (options.purge) {
+          if (options.purge) {            
             if (match) {
               const allowed = imports.some((imp) => id.includes(imp));
 
