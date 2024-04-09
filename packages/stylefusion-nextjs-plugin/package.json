@@ -1,6 +1,6 @@
 {
   "name": "@stylefusion/nextjs-plugin",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "build/index.js",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",
@@ -20,10 +20,10 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@stylefusion/unplugin": "workspace:*"
-  },
-  "devDependencies": {
     "@stylefusion/unocss": "workspace:*",
+    "@stylefusion/unplugin": "workspace:*"    
+  },
+  "devDependencies": {    
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.73",    
     "next": "^13.5.1"

@@ -39,7 +39,7 @@ importers:
         specifier: latest
         version: 1.13.0
 
-  apps/web:
+  apps/dev:
     dependencies:
       '@acme/server':
         specifier: workspace:*
@@ -139,13 +139,13 @@ importers:
 
   packages/stylefusion-nextjs-plugin:
     dependencies:
+      '@stylefusion/unocss':
+        specifier: workspace:*
+        version: link:../stylefusion-unocss
       '@stylefusion/unplugin':
         specifier: workspace:*
         version: link:../stylefusion-unplugin
     devDependencies:
-      '@stylefusion/unocss':
-        specifier: workspace:*
-        version: link:../stylefusion-unocss
       '@types/node':
         specifier: ^20.11.30
         version: 20.11.30

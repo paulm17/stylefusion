@@ -13,7 +13,7 @@ function processStyles(styles: Record<string, any>, prefix = "") {
 
  const stylesRes = processStylesLoop(rest, prefix);
 
- return { root: rootRes, layer: layer !== undefined ? `${layer}#` : "", styles: stylesRes.join(" ") };
+ return { root: rootRes, layer: layer !== undefined ? `${layer}##` : "", styles: stylesRes.join(" ") };
 }
 
 function processStylesLoop(styles: Record<string, any>, prefix = "") {
@@ -84,7 +84,7 @@ function genStyleRootObj(cssClass: string) {
 
     if (match && match[1]) {
       let layer = undefined;
-      const layerSplitText = match[1].split("#");
+      const layerSplitText = match[1].split("##");
 
       if (layerSplitText && layerSplitText.length > 1) {
         layer = layerSplitText.shift();

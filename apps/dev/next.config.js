@@ -5,7 +5,7 @@ module.exports = withPigment({
   transpilePackages: ["ui"],
 }, {
   // purge: {
-  //   libraries: ["@acme"],
+  //   libraries: ["@raikou"],
   //   filename: "./component_names.txt"
   // }
 });

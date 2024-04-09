@@ -117,6 +117,7 @@ export class CssProcessor extends BaseProcessor {
   }
   async generateArtifacts(styleObjOrTaggged: any | string[], ...args: Primitive[]) {  
     const { root, layer, styles } = processStyles(styleObjOrTaggged);
+
     this.styleRoot = root;
     this.styleStr = styles;
 
