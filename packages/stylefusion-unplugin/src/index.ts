@@ -125,7 +125,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     asyncResolve: asyncResolveOpt,
     debug = false,
     sourceMap = false,
-    transformSx = true,
+    transformSx = false,
     overrideContext,
     tagResolver,
     ...rest
@@ -139,28 +139,28 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const allComponents = [] as string[];
   const imports = [] as string[];
   const cssFiles = new Set<string>();
-  const babelTransformPlugin: UnpluginOptions = {
-    name: 'zero-plugin-transform-babel',
-    enforce: 'post',
-    transformInclude(id) {
-      return isZeroRuntimeProcessableFile(id, transformLibraries);
-    },
-    async transform(code, id) {
-      const result = await transformAsync(code, {
-        filename: id,
-        babelrc: false,
-        configFile: false,
-        plugins: [[`${process.env.RUNTIME_PACKAGE_NAME}/exports/sx-plugin`]],
-      });
-      if (!result) {
-        return null;
-      }
-      return {
-        code: result.code ?? code,
-        map: result.map,
-      };
-    },
-  };
+  // const babelTransformPlugin: UnpluginOptions = {
+  //   name: 'zero-plugin-transform-babel',
+  //   enforce: 'post',
+  //   transformInclude(id) {
+  //     return isZeroRuntimeProcessableFile(id, transformLibraries);
+  //   },
+  //   async transform(code, id) {
+  //     const result = await transformAsync(code, {
+  //       filename: id,
+  //       babelrc: false,
+  //       configFile: false,
+  //       plugins: [[`${process.env.RUNTIME_PACKAGE_NAME}/exports/sx-plugin`]],
+  //     });
+  //     if (!result) {
+  //       return null;
+  //     }
+  //     return {
+  //       code: result.code ?? code,
+  //       map: result.map,
+  //     };
+  //   },
+  // };
 
   let webpackResolver: AsyncResolver;
 
@@ -200,46 +200,18 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     buildEnd() {
       // clean up css files
       if (cssFiles.size > 0) {
-        cssFiles.forEach(async(file) => {
-          const valid = await checkFileExists(file);
-          if (valid) {
-            fsPromises.unlink(file);        
-          }        
-        })
-        cssFiles.clear();
+        // cssFiles.forEach(async(file) => {
+        //   const valid = await checkFileExists(file);
+        //   if (valid) {
+        //     fsPromises.unlink(file);        
+        //   }        
+        // })
+        // cssFiles.clear();
       }
       onDone(process.cwd());
     },
     transformInclude(id) {      
       return isZeroRuntimeProcessableFile(id, transformLibraries);
-    },
-    webpack(compiler) {
-      const resolverPlugin: ResolvePluginInstance = {
-        apply(resolver) {
-          webpackResolver = function webpackAsyncResolve(
-            what: string,
-            importer: string,
-            stack: string[],
-          ) {
-            const context = path.isAbsolute(importer)
-              ? path.dirname(importer)
-              : path.join(process.cwd(), path.dirname(importer));
-            return new Promise((resolve, reject) => {
-              resolver.resolve({}, context, what, { stack: new Set(stack) }, (err, result) => {
-                if (err) {
-                  reject(err);
-                } else if (result) {
-                  resolve(result);
-                } else {
-                  reject(new Error(`${process.env.PACKAGE_NAME}: Cannot resolve ${what}`));
-                }
-              });
-            });
-          };
-        },
-      };
-      compiler.options.resolve.plugins = compiler.options.resolve.plugins || [];
-      compiler.options.resolve.plugins.push(resolverPlugin);
     },
     async transform(code, id) {
       const transformServices = {
@@ -324,7 +296,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
 
             allComponents.push(...componentList);
           }
-        }
+        }        
 
         if (id.endsWith(".tsx")) {
           // retrieve validated imports
@@ -375,16 +347,16 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
           const libraries = options.purge && options.purge.libraries || [];
           const match = matchLibraryAndComponents(id, libraries, allComponents);
 
-          if (options.purge) {            
+          if (options.purge) {    
             if (match) {
-              const allowed = imports.some((imp) => id.includes(imp));
+              const allowed = imports.some((imp) => id.includes(`/${imp}/`));
 
               data = `${meta.placeholderCssFile}?${encodeURIComponent(
                 JSON.stringify({
                   filename: cssFilename,
                   source: allowed ? fileName : "",
                 }),
-              )}`;         
+              )}`;   
             } else {
               data = `${meta.placeholderCssFile}?${encodeURIComponent(
                 JSON.stringify({
@@ -401,7 +373,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
               }),
             )}`;
           }
-          
+
           return {
             // CSS import should be the last so that nested components produce correct CSS order injection.
             code: `${result.code}\nimport ${JSON.stringify(data)};`,
@@ -414,12 +386,40 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         return {
           code: `${result.code}\nimport ${JSON.stringify(`./${cssFilename}`)};`,
           map: result.sourceMap,
-        };
+        };        
       } catch (e) {
         const error = new Error((e as Error).message);
         error.stack = (e as Error).stack;
         throw error;
       }
+    },
+    webpack(compiler) {
+      const resolverPlugin: ResolvePluginInstance = {
+        apply(resolver) {
+          webpackResolver = function webpackAsyncResolve(
+            what: string,
+            importer: string,
+            stack: string[],
+          ) {
+            const context = path.isAbsolute(importer)
+              ? path.dirname(importer)
+              : path.join(process.cwd(), path.dirname(importer));
+            return new Promise((resolve, reject) => {
+              resolver.resolve({}, context, what, { stack: new Set(stack) }, (err, result) => {
+                if (err) {
+                  reject(err);
+                } else if (result) {
+                  resolve(result);
+                } else {
+                  reject(new Error(`${process.env.PACKAGE_NAME}: Cannot resolve ${what}`));
+                }
+              });
+            });
+          };
+        },
+      };
+      compiler.options.resolve.plugins = compiler.options.resolve.plugins || [];
+      compiler.options.resolve.plugins.push(resolverPlugin);
     },
   };
 
@@ -438,7 +438,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
               }
             },
           );
-        });
+        });        
       },
       ...(isNext
         ? {
@@ -491,9 +491,10 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     },
   ];
 
-  if (transformSx) {
-    plugins.push(babelTransformPlugin);
-  }
+  // if (transformSx) {
+  //   plugins.push(babelTransformPlugin);
+  // }
+  
   plugins.push(wywInJSTransformPlugin);
 
   // This is already handled separately for Next.js using `placeholderCssFile`

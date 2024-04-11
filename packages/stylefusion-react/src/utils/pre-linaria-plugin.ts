@@ -74,7 +74,6 @@ export const babelPlugin = declare<{ propName?: string; importName?: string }>(
             return;
           }
           const jsxElement = parentJsxCall.get('arguments')[0] as NodePath<Types.Identifier>;
-          console.log(valuePath, keyPath, importName, t, jsxElement);
           replaceNodePath(valuePath, keyPath, importName, t, jsxElement);
         },
       },

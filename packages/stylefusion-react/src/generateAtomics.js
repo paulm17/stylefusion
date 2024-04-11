@@ -17,9 +17,7 @@ export function generateAtomics() {
  * @param {RuntimeConfig} runtimeConfig
  */
 export function atomics({ styles, shorthands, conditions }) {
-  console.log("generateAtomics - atomics");
   function addStyles(cssProperty, values, classes) {
-    console.log("generateAtomics - addStyles");
     const styleClasses = styles[cssProperty];
     if (!styleClasses) {
       return;
@@ -42,7 +40,6 @@ export function atomics({ styles, shorthands, conditions }) {
   }
 
   function generateClass(props) {
-    console.log("generateAtomics - generateClass");
     const classes = [];
     const runtimeStyles = { ...props };
     Object.keys(runtimeStyles).forEach((cssProperty) => {
