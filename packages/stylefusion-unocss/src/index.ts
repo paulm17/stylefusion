@@ -180,8 +180,10 @@ function extractClassNames(code: string) {
 async function genUnoCSS(source: string) {
   const generator = createGenerator({
     presets: [
-      presetUno(),
-    ],
+      presetUno({
+        dark: "class",
+      }),      
+    ],    
   })
   
   const { css } = await generator.generate(source, {

@@ -340,14 +340,15 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
           const fileName = `raikou_${generateRandomString()}.txt`;
           const filePath = `${os.tmpdir()}/${fileName}`;
           await fsPromises.writeFile(filePath, layers, { encoding: 'utf8', flag: 'w', mode: 0o666 });
-          cssFiles.add(fileName);
+          cssFiles.add(fileName);          
 
-          // Now determine whether some components need to be purged
           let data = "";
-          const libraries = options.purge && options.purge.libraries || [];
-          const match = matchLibraryAndComponents(id, libraries, allComponents);
 
           if (options.purge) {    
+            // Now determine whether some components need to be purged
+            const libraries = options.purge && options.purge.libraries || [];
+            const match = matchLibraryAndComponents(id, libraries, allComponents);
+
             if (match) {
               const allowed = imports.some((imp) => id.includes(`/${imp}/`));
 
