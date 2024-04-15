@@ -9,7 +9,7 @@ import {
   transform,
   createFileReporter,
 } from '@wyw-in-js/transform';
-import { asyncResolveFallback, slugify } from '@wyw-in-js/shared';
+import { asyncResolveFallback } from '@wyw-in-js/shared';
 import {
   UnpluginFactoryOutput,
   WebpackPluginInstance,
@@ -27,6 +27,7 @@ import type { ResolvePluginInstance } from 'webpack';
 import { extractClassNames, genLayers, genStyleRootObj } from "@stylefusion/unocss"
 import os from 'node:os';
 import fsPromises from 'fs/promises';
+import fs from 'fs';
 
 type NextMeta = {
   type: 'next';
@@ -116,6 +117,16 @@ async function genComponentList(components: string) {
   return [];
 }  
 
+function generateRandomString(length = 8) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charactersLength = characters.length;
+  for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
+
 export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const {
     theme,
@@ -125,7 +136,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     asyncResolve: asyncResolveOpt,
     debug = false,
     sourceMap = false,
-    transformSx = false,
+    transformSx = true,
     overrideContext,
     tagResolver,
     ...rest
@@ -139,28 +150,33 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const allComponents = [] as string[];
   const imports = [] as string[];
   const cssFiles = new Set<string>();
-  // const babelTransformPlugin: UnpluginOptions = {
-  //   name: 'zero-plugin-transform-babel',
-  //   enforce: 'post',
-  //   transformInclude(id) {
-  //     return isZeroRuntimeProcessableFile(id, transformLibraries);
-  //   },
-  //   async transform(code, id) {
-  //     const result = await transformAsync(code, {
-  //       filename: id,
-  //       babelrc: false,
-  //       configFile: false,
-  //       plugins: [[`${process.env.RUNTIME_PACKAGE_NAME}/exports/sx-plugin`]],
-  //     });
-  //     if (!result) {
-  //       return null;
-  //     }
-  //     return {
-  //       code: result.code ?? code,
-  //       map: result.map,
-  //     };
-  //   },
-  // };
+  const layerStyles = {} as Record<string, string[]>;
+  const unoStyles = new Set<string>();
+  let rootStyles = "";
+
+  const babelTransformPlugin: UnpluginOptions = {
+    name: 'zero-plugin-transform-babel',
+    enforce: 'post',
+    transformInclude(id) {
+      return isZeroRuntimeProcessableFile(id, transformLibraries);
+    },
+    async transform(code, id) {
+      const result = await transformAsync(code, {
+        filename: id,
+        babelrc: false,
+        configFile: false,
+        plugins: [[`${process.env.RUNTIME_PACKAGE_NAME}/exports/sx-plugin`]],
+      });
+      if (!result) {
+        return null;
+      }
+      return {
+        code: result.code ?? code,
+        map: result.map,
+      };
+    },
+  };
+
 
   let webpackResolver: AsyncResolver;
 
@@ -175,16 +191,6 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     return asyncResolveFallback(what, importer, stack);
   };
 
-  const generateRandomString = (length = 8) => {
-    let result = '';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const charactersLength = characters.length;
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    }
-    return result;
-  }
-
   async function checkFileExists(filePath: string) {
     try {
        await fsPromises.access(filePath, fsPromises.constants.F_OK);
@@ -197,17 +203,15 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const wywInJSTransformPlugin: UnpluginOptions = {
     name: 'zero-plugin-transform-wyw-in-js',
     enforce: 'post',
-    buildEnd() {
+    async buildEnd() {
       // clean up css files
-      if (cssFiles.size > 0) {
-        // cssFiles.forEach(async(file) => {
-        //   const valid = await checkFileExists(file);
-        //   if (valid) {
-        //     fsPromises.unlink(file);        
-        //   }        
-        // })
-        // cssFiles.clear();
-      }
+      // try {
+      //   const valid = await checkFileExists(fileName);
+      //   if (valid) {
+      //     await fsPromises.unlink(fileName);          
+      //   }
+      // } catch (error) {}  
+
       onDone(process.cwd());
     },
     transformInclude(id) {      
@@ -287,8 +291,6 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
       }
       
       try {
-        let unocssStyles = "";
-
         // load all components from purge option
         if (options.purge && options.purge.filename) {
           if (allComponents.length === 0) {
@@ -296,13 +298,32 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
 
             allComponents.push(...componentList);
           }
+
+          // Now determine whether some components need to be purged
+          const libraries = options.purge && options.purge.libraries || [];
+          const match = matchLibraryAndComponents(id, libraries, allComponents);
+
+          if (match) {
+            const allowed = imports.some((imp) => id.includes(`/${imp}/`));
+
+            if (!allowed) {
+              return null;
+            }
+          }
         }        
 
         if (id.endsWith(".tsx")) {
           // retrieve validated imports
           imports.push(...genValidImports(code));
 
-          unocssStyles = extractClassNames(code) as string;
+          // add to classNames styles
+          const unocssStyles = extractClassNames(code) as string;
+          const unoStyles_s = unocssStyles.split(" ");
+          unoStyles_s.forEach(style => {
+            if (style !== "" && !unoStyles.has(style)) {
+              unoStyles.add(style);
+            }
+          });
         }        
 
         const result = await transform(transformServices, code, asyncResolve);
@@ -314,15 +335,34 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         let { cssText: resCssText } = result;
         let { style: cssText, root } = genStyleRootObj(resCssText);
 
+        const styles = JSON.parse(cssText);
+        Object.keys(styles).forEach((key) => {
+          if (!layerStyles[key]) {
+            layerStyles[key] = [] as string[];
+
+            styles[key].split(" ").forEach((style: string) => {
+              if (!layerStyles[key]!.includes(style)) {
+                layerStyles[key]!.push(style);
+              }
+            })
+          } else {
+            styles[key].split(" ").forEach((style: string) => {
+              if (!layerStyles[key]!.includes(style)) {
+                layerStyles[key]!.push(style);
+              }
+            })
+          }
+        });
+
+        rootStyles += root.trim(); 
+
         if (isNext && !outputCss) {
           return {
             code: result.code,
             map: result.sourceMap,
           };
         }
-        const slug = slugify(cssText);
-        const cssFilename = `${slug}.zero.css`;
-
+      
         if (sourceMap && result.cssSourceMapText) {
           const map = Buffer.from(result.cssSourceMapText).toString('base64');
           cssText += `/*# sourceMappingURL=data:application/json;base64,${map}*/`;
@@ -333,61 +373,28 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         // file with the actual CSS content as part of the query params.
 
         if (isNext) {
-          const layers = await genLayers(cssText, root, unocssStyles);
-
+          const layers = await genLayers(layerStyles, rootStyles, unoStyles);
+        
           // Use a file to pass styles to virtual-css-loader otherwise the placeholder duplicates
-          // the same styles :(
-          const fileName = `raikou_${generateRandomString()}.txt`;
+          // the same styles :( 
+          const fileName = `raikou_tmp_file.txt`;         
           const filePath = `${os.tmpdir()}/${fileName}`;
-          await fsPromises.writeFile(filePath, layers, { encoding: 'utf8', flag: 'w', mode: 0o666 });
+          // don't async otherwise corruption occurs
+          fs.writeFileSync(filePath, layers, { encoding: 'utf8', flag: 'w', mode: 0o666 });
           cssFiles.add(fileName);          
-
-          let data = "";
-
-          if (options.purge) {    
-            // Now determine whether some components need to be purged
-            const libraries = options.purge && options.purge.libraries || [];
-            const match = matchLibraryAndComponents(id, libraries, allComponents);
-
-            if (match) {
-              const allowed = imports.some((imp) => id.includes(`/${imp}/`));
-
-              data = `${meta.placeholderCssFile}?${encodeURIComponent(
-                JSON.stringify({
-                  filename: cssFilename,
-                  source: allowed ? fileName : "",
-                }),
-              )}`;   
-            } else {
-              data = `${meta.placeholderCssFile}?${encodeURIComponent(
-                JSON.stringify({
-                  filename: cssFilename,
-                  source: fileName,
-                }),
-              )}`;         
-            }
-          } else {
-            data = `${meta.placeholderCssFile}?${encodeURIComponent(
-              JSON.stringify({
-                filename: cssFilename,
-                source: fileName,
-              }),
-            )}`;
-          }
+                    
+          const  data = `${meta.placeholderCssFile}?${encodeURIComponent(
+            JSON.stringify({
+              source: fileName,
+            }),
+          )}`;
 
           return {
             // CSS import should be the last so that nested components produce correct CSS order injection.
-            code: `${result.code}\nimport ${JSON.stringify(data)};`,
+            code: `${result.code}\n import ${JSON.stringify(data)}`,
             map: result.sourceMap,
           };
-        }
-        const cssId = `./${cssFilename}`;
-        cssFileLookup.set(cssId, cssFilename);
-        cssLookup.set(cssFilename, cssText);
-        return {
-          code: `${result.code}\nimport ${JSON.stringify(`./${cssFilename}`)};`,
-          map: result.sourceMap,
-        };        
+        } 
       } catch (e) {
         const error = new Error((e as Error).message);
         error.stack = (e as Error).stack;
@@ -492,10 +499,10 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     },
   ];
 
-  // if (transformSx) {
-  //   plugins.push(babelTransformPlugin);
-  // }
-  
+  if (transformSx) {
+    plugins.push(babelTransformPlugin);
+  }
+
   plugins.push(wywInJSTransformPlugin);
 
   // This is already handled separately for Next.js using `placeholderCssFile`

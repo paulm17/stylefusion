@@ -134,7 +134,7 @@ function extractClassNames(code: string) {
     /export default function\s+\w+\s*\(\)\s*\{[\s\S]*?return\s+[\s\S]*}?\}/
   );
 
-  if (!functionBlockMatch) return []; // No function block found
+  if (!functionBlockMatch) return ""; // No function block found
 
   // Step 2: Remove all new lines
   const singleLineCode = functionBlockMatch[0]
@@ -156,7 +156,15 @@ function extractClassNames(code: string) {
   // get styles from ClassName
   if (classNameMatches !== null) {
     classNameMatches.forEach((className) => {
-      stylesFromClassName.push(className.replace(/className:\s*["`]/, "").replace(`\``, "").replace(/\$\{.*?\}/g, ""));      
+      const styles = className.replace(/className:\s*["`]/, "").replace(/["`]/, "").replace(/\$\{.*?\}/g, "").split(" ");
+
+      if (styles.length > 0) {
+        styles.forEach((style) => {
+          if (!stylesFromClassName.includes(style)) {
+            stylesFromClassName.push(style);          
+          }
+        })
+      }      
     })
   }
 
@@ -193,25 +201,27 @@ async function genUnoCSS(source: string) {
   return css;
 }
 
-async function genLayers(source: string, root: string, classNameStyles: string) {
-  const layersArr = JSON.parse(source);
-
-  if (classNameStyles !== "") {
-    layersArr["classNames"] = classNameStyles;
+async function genLayers(layersArr: Record<string, string[]>, root: string, classNameStyles: Set<string>) {
+  if (classNameStyles.size > 0) {
+    layersArr["classNames"] = [...classNameStyles];
   }
+
+  layersArr = filterDuplicates(layersArr);
 
   const headers = Object.keys(layersArr).join(", ");
 
   const allPromises = Object.keys(layersArr).map(async(layer) => {
-    const unocss = await genUnoCSS(layersArr[layer])
+    const styles = await genUnoCSS(layersArr[layer]!.join(" ").trim());
 
-    return `
-      @layer ${layer} {
-        ${layer === "default" ? root : ""}
-        ${unocss}
-      }
-    `
-  });
+    const stylesNL = styles.split("\n").filter(
+      (value: string) => !value.includes("layer: default")
+    );
+
+    return `@layer ${layer} {
+      ${layer === "default" ? root : ""}
+      ${stylesNL.join("\n")}
+    }`
+  }); 
 
   const allLayers = await Promise.all(allPromises);
 
@@ -223,6 +233,121 @@ async function genLayers(source: string, root: string, classNameStyles: string) 
 
   return css;
 }
+
+function filterDuplicates(obj: Record<string, string[]>) {
+  let dupe = [] as string[];
+  const keys = [...Object.keys(obj)];  
+ 
+  // Loop through each key in the order specified by the keys array
+  for (let i = 0; i < keys.reverse().length; i++) {    
+    const currentKey = keys[i];
+    const currentValue = obj[currentKey!];
+
+    if (currentKey === "default") {
+      continue;
+    }
+
+     // Compare the current item with all other items
+     for (let j = i + 1; j < keys.length; j++) {
+       const nextKey = keys[j];
+       const nextValue = obj[nextKey!];
+ 
+       // Find matches between the current and next items
+       const matches = currentValue!.filter(item => nextValue!.includes(item));
+ 
+       // If there are matches, add them to the dupe array and filter them out from the next item
+       if (matches.length > 0) {
+         dupe = [...dupe, ...matches];
+         obj[nextKey!] = nextValue!.filter(item => !matches.includes(item));
+       }
+     }     
+  }
+
+  // Filter the current item against the dupe array
+  obj["default"] = obj["default"]!.filter(item => !dupe.includes(item));
+
+  // Return the filtered object and the dupe array
+  return obj;
+ }
+
+// function filterDuplicates(keys: string[],obj: Record<string, string[]>) {
+//   console.log("keys", keys);
+
+//   keys.forEach((key) => {
+    
+//   })
+
+//   // for (let i = 0; i < keys.length - 1; i++) {
+//   //   const currentKey = keys[i];
+//   //   const nextKey = keys[i + 1];
+
+//   //   // Get the current and next key values
+//   //   const currentValues = obj[currentKey!];
+//   //   const nextValues = obj[nextKey!];
+
+//   //   // console.log(currentKey, currentValues);
+//   //   // console.log(nextKey, nextValues);
+
+//   //   // // Filter out duplicates from the current key values that exist in the next key values
+//   //   // obj[currentKey!] = currentValues!.filter(
+//   //   //   (value) => !nextValues!.includes(value)
+//   //   // );
+
+//   //   // // Keep track of duplicates
+//   //   // const duplicates = currentValues!.filter((value) =>
+//   //   //   nextValues!.includes(value)
+//   //   // );
+
+//   //   // // Optionally, remove duplicates from the next key values
+//   //   // obj[nextKey!] = nextValues!.filter(value => !duplicates.includes(value));
+
+//   //   // console.log("dupes", duplicates);
+//   // }
+
+//   return obj;
+// }
+
+// function filterDuplicates(keys: string[], obj: Record<string, string[]>): Record<string, string[]> {
+//   // Initialize an array to keep track of duplicates
+//   const duplicates: string[] = [];
+ 
+//   console.log("keys", keys);
+
+//   // Loop through all keys
+//   keys.forEach((currentKey, currentIndex) => {
+//      // Get the current key values
+//      const currentValues = obj[currentKey];
+
+//     //  // Loop through all other keys to find duplicates
+//      keys.forEach((otherKey, otherIndex) => {
+//        if (currentIndex !== otherIndex) {
+//          const otherValues = obj[otherKey];
+ 
+//          // Find duplicates between current and other key values
+//          const currentDuplicates = currentValues!.filter(value => otherValues!.includes(value));
+ 
+//     //      // Add found duplicates to the duplicates array
+//          duplicates.push(...currentDuplicates);
+
+//          console.log("dupes", duplicates);
+//          console.log("otherKey", otherKey);
+ 
+//     //      // Remove duplicates from the other key values
+//         //  obj[otherKey] = otherValues!.filter(value => !duplicates.includes(value));
+//        }
+//      });
+ 
+//      // Remove duplicates from the current key values
+//     //  obj[currentKey] = currentValues!.filter(value => !duplicates.includes(value));
+//   });
+ 
+//   // // Remove duplicates from the last key values
+//   // const lastKey = keys[keys.length - 1];
+//   // // @ts-ignore
+//   // obj[lastKey!] = obj[lastKey!].filter(value => !duplicates.includes(value!));
+ 
+//   return obj;
+//  }
 
 export { 
   createGenerator, 
