@@ -152,7 +152,6 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const cssFiles = new Set<string>();
   const layerStyles = {} as Record<string, string[]>;
   const unoStyles = new Set<string>();
-  let rootStyles = "";
 
   const babelTransformPlugin: UnpluginOptions = {
     name: 'zero-plugin-transform-babel',
@@ -332,29 +331,27 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
           return null;
         }
 
-        let { cssText: resCssText } = result;
-        let { style: cssText, root } = genStyleRootObj(resCssText);
+        let { cssText } = result;
+        let { css } = genStyleRootObj(cssText);
 
-        const styles = JSON.parse(cssText);
-        Object.keys(styles).forEach((key) => {
-          if (!layerStyles[key]) {
-            layerStyles[key] = [] as string[];
+        // const styles = JSON.parse(css);
+        // Object.keys(styles).forEach((key) => {
+        //   if (!layerStyles[key]) {
+        //     layerStyles[key] = [] as string[];
 
-            styles[key].split(" ").forEach((style: string) => {
-              if (!layerStyles[key]!.includes(style)) {
-                layerStyles[key]!.push(style);
-              }
-            })
-          } else {
-            styles[key].split(" ").forEach((style: string) => {
-              if (!layerStyles[key]!.includes(style)) {
-                layerStyles[key]!.push(style);
-              }
-            })
-          }
-        });
-
-        rootStyles += root.trim(); 
+        //     styles[key].split(" ").forEach((style: string) => {
+        //       if (!layerStyles[key]!.includes(style)) {
+        //         layerStyles[key]!.push(style);
+        //       }
+        //     })
+        //   } else {
+        //     styles[key].split(" ").forEach((style: string) => {
+        //       if (!layerStyles[key]!.includes(style)) {
+        //         layerStyles[key]!.push(style);
+        //       }
+        //     })
+        //   }
+        // });
 
         if (isNext && !outputCss) {
           return {
@@ -373,7 +370,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
         // file with the actual CSS content as part of the query params.
 
         if (isNext) {
-          const layers = await genLayers(layerStyles, rootStyles, unoStyles);
+          const layers = await genLayers(css, unoStyles);
 
           // Use a file to pass styles to virtual-css-loader otherwise the placeholder duplicates
           // the same styles :( 

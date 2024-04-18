@@ -90,28 +90,28 @@ function processRoot(root: any, prefix: string = "") {
   return "";
 }
 
+type layersType = Record<string, {root: Record<string, string[]>, style: string[]}>;
+
 // convert the markup from styles to unocss
 function genStyleRootObj(cssClass: string) {
   const cssClass_s = cssClass.split("\n");
-  const styleArray: Record<string, string[]> = {
-    default: [],
+  const layerArray: layersType = {
+    default: {
+      root: {},
+      style: []
+    },
   };
-  const rootArray: Record<string, string[]> = {};
 
   cssClass_s.forEach(element => {
     const regex = /(\.\w+){(.*)}/;
     const match = element.match(regex);
 
     let className = "";
-    let layer: string | undefined = undefined;
+    let layer = "default";
 
     if (match && match[1] && match[2]) {
       className = match[1];
       element = match[2].replace("css:", "");
-
-      if (!Object.keys(rootArray).includes(className)) {
-        rootArray[className] = []
-      }
     }
 
     const classDefinitions = element.split('|');    
@@ -125,7 +125,13 @@ function genStyleRootObj(cssClass: string) {
         }
         if (s_text && s_text[1]) {
           layer = s_text[1]!;
-          styleArray[layer] = []
+
+          if (!Object.keys(layerArray).includes(layer)) {
+            layerArray[layer] = {
+              root: {},
+              style: []
+            }
+          }
         }
       } else if (classDef.match(/root\#/)) {
         const s_text = classDef.split("root#");
@@ -134,11 +140,15 @@ function genStyleRootObj(cssClass: string) {
           var re = new RegExp(className, "g");
           const s_root = s_text[1].replace(re, " ").split("}");
 
+          if (!Object.keys(layerArray[layer!]!.root).includes(className)) {
+            layerArray[layer!]!.root[className] = []
+          }
+
           s_root.forEach((rootItem, index) => {
             if (index === 0) {
               const s_rootItem = rootItem.split(";");
               const items = s_rootItem.filter((item) => item !== "");
-              rootArray[className]?.push(...items);
+              layerArray[layer]!.root[className]?.push(...items);
             } else {
               rootItem = rootItem.trimStart();
 
@@ -150,11 +160,11 @@ function genStyleRootObj(cssClass: string) {
               const match = rootItem.match(regex);
 
               if (match && match[1] && match[2]) {
-                if (!Object.keys(rootArray).includes(`${match[1]} ${className}`)) {
-                  rootArray[`${match[1]} ${className}`] = []
+                if (!Object.keys(layerArray).includes(`${match[1]} ${className}`)) {
+                  layerArray[layer]!.root[`${match[1]} ${className}`] = []
                 }
 
-                rootArray[`${match[1]} ${className}`]?.push(match[2]);
+                layerArray[layer]!.root[`${match[1]} ${className}`]?.push(match[2]);
               }              
             }
           })
@@ -163,31 +173,16 @@ function genStyleRootObj(cssClass: string) {
         const s_text = classDef.split("style#");
 
         if (s_text && s_text[1]) {
-          const newLayer = layer === undefined ? "default" : layer;
-          styleArray[newLayer]?.push(s_text[1]);
+          layerArray[layer]?.style.push(...s_text[1].split(" "));
         }
       }
     });
   });
 
-  const StyleArrayString: Record<string, string> = {};
-
-  Object.keys(styleArray).forEach(key => {
-    StyleArrayString[key] = styleArray[key]!.join(' ');
-  });
-
-  let root = "";
-  Object.keys(rootArray).forEach(key => {
-    if (rootArray[key]?.length !== 0) {
-      root += `${key} {${rootArray[key]?.join("; ")}}\n`;
-    }
-  })
-
   return {
-     style: JSON.stringify(StyleArrayString),
-    root: root
+    css: JSON.stringify(layerArray),
   };
- }
+}
 
 // extract from code blocks in webpack
 function extractClassNames(code: string) {
@@ -263,9 +258,16 @@ async function genUnoCSS(source: string) {
   return css;
 }
 
-async function genLayers(layersArr: Record<string, string[]>, root: string, classNameStyles: Set<string>) {
+async function genLayers(layers: string, classNameStyles: Set<string>) {
+  let layersArr = JSON.parse(layers) as layersType;
+
   if (classNameStyles.size > 0) {
-    layersArr["classNames"] = [...classNameStyles];
+    layersArr["classNames"] = {
+      root: {},
+      style: [],
+    }
+
+    layersArr["classNames"].style = [...classNameStyles];
   }
 
   layersArr = filterDuplicates(layersArr);
@@ -273,29 +275,55 @@ async function genLayers(layersArr: Record<string, string[]>, root: string, clas
   const headers = Object.keys(layersArr).join(", ");
 
   const allPromises = Object.keys(layersArr).map(async(layer) => {
-    const styles = await genUnoCSS(layersArr[layer]!.join(" ").trim());    
+    const layerStyles = layersArr[layer]!.style;
+    const layerRoot = layersArr[layer]!.root;
+
+    const styles = await genUnoCSS(layerStyles.join(" ").trim());    
     const stylesNL = styles.split("\n").filter(
       (value: string) => !value.includes("layer: default")
     );
 
+    const rootText = Object.keys(layerRoot).map((key) => {
+      if (layerRoot[key]!.length > 0) {
+        return `${key} {${layerRoot[key]!.join("; ")};}`
+      }
+    }).filter(item => item !== undefined).join(";");
+
     return `@layer ${layer} {
-      ${layer === "default" ? root : ""}
+      ${rootText !== "" ? `${rootText}\n` : ""}
       ${stylesNL.join("\n")}
     }`
   }); 
 
-  const allLayers = await Promise.all(allPromises);
+  const done = await Promise.all(allPromises);
 
   const css = `
     @layer ${headers};
 
-    ${allLayers.join("\n")}
+    ${done.join("\n")}
   `;
 
   return css;
 }
 
-function filterDuplicates(obj: Record<string, string[]>) {
+function filterDuplicates(layersArr: layersType) {
+  const obj: Record<string, string[]> = {};
+
+  Object.keys(layersArr).forEach((key) => {
+    const style = layersArr[key]?.style;
+    obj[key] = style || [];
+  });
+
+  const filtered = filterDuplicatesFromStyle(obj);
+
+  Object.keys(filtered).forEach((key) => {
+    layersArr[key]!.style = filtered[key] as string[];
+  })
+
+  return layersArr;
+}
+
+function filterDuplicatesFromStyle(obj: Record<string, string[]>) {
   let dupe = [] as string[];
   const keys = [...Object.keys(obj)];  
  
