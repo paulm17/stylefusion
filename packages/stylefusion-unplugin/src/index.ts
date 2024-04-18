@@ -374,14 +374,13 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
 
         if (isNext) {
           const layers = await genLayers(layerStyles, rootStyles, unoStyles);
-        
+
           // Use a file to pass styles to virtual-css-loader otherwise the placeholder duplicates
           // the same styles :( 
           const fileName = `raikou_tmp_file.txt`;         
           const filePath = `${os.tmpdir()}/${fileName}`;
           // don't async otherwise corruption occurs
           fs.writeFileSync(filePath, layers, { encoding: 'utf8', flag: 'w', mode: 0o666 });
-          cssFiles.add(fileName);          
                     
           const  data = `${meta.placeholderCssFile}?${encodeURIComponent(
             JSON.stringify({

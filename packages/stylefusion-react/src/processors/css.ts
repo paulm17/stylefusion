@@ -124,7 +124,7 @@ export class CssProcessor extends BaseProcessor {
     const rules: Rules = {
       [this.asSelector]: {
         className: this.className,
-        cssText: `tmp:${layer}${this.styleStr}|${this.styleRoot}`,
+        cssText: `css:layer#${layer}|style#${this.styleStr}|root#${this.styleRoot}`,
         displayName: this.displayName,
         start: this.location?.start ?? null,
       },
@@ -154,6 +154,7 @@ export class CssProcessor extends BaseProcessor {
 
     callArgs.forEach((callArg) => {
       let styleObj: CSSInterpolation;
+
       if (callArg.kind === ValueType.LAZY) {
         styleObj = values.get(callArg.ex.name) as CSSInterpolation;
       } else if (callArg.kind === ValueType.FUNCTION) {
@@ -167,7 +168,8 @@ export class CssProcessor extends BaseProcessor {
       if (styleObj) {
         deepMerge(mergedStyleObj, styleObj);
       }
-    });
+    })
+
     if (Object.keys(mergedStyleObj).length > 0) {
       this.generateArtifacts(mergedStyleObj);
     }

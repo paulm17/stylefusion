@@ -4,21 +4,20 @@ import presetUno from '@unocss/preset-uno'
 // process the unocss styles
 function processStyles(styles: Record<string, any>, prefix = "") {
   // Extract the 'root' property and store it in a new variable
- const { root, layer, ...rest } = styles;
+ const { layer, ...rest } = styles;
 
- let rootRes = "";
- if (root !== undefined) {
-  rootRes = processRoot(root);
- }
-
+ const rootRes = processRootLoop(rest, prefix);
  const stylesRes = processStylesLoop(rest, prefix);
 
- return { root: rootRes, layer: layer !== undefined ? `${layer}##` : "", styles: stylesRes.join(" ") };
+ return { root: rootRes.join(" "), layer: layer !== undefined ? layer : "", styles: stylesRes.join(" ") };
 }
 
 function processStylesLoop(styles: Record<string, any>, prefix = "") {
   let result = [] as string[];
   for (let [key, value] of Object.entries(styles)) {
+    if (key === 'root') {
+      continue;
+    }
 
     // target classes
     if (key.match(/&>./)) {
@@ -46,6 +45,26 @@ function processStylesLoop(styles: Record<string, any>, prefix = "") {
   return result;
 }
 
+function processRootLoop(styles: Record<string, any>, prefix = "") {
+  let result = [] as string[];
+  for (let [key, value] of Object.entries(styles)) {
+    // target classes
+    if (key.match(/&>./)) {
+      key = key.replace(/\s+/g, "")
+    }
+    
+    if (key === "root") {
+      if (typeof value === "object" && !Array.isArray(value) && value !== null) {
+        result.push(processRoot(value, prefix.replace(":", "")));
+      }
+    } else if (typeof value === "object" && !Array.isArray(value) && value !== null) {
+      result.push(...processRootLoop(value, `${key}:`));
+    }
+  }
+
+  return result;
+}
+
 function extractItems(input: string) {
   // Enhanced regex to match a wider range of patterns
   const regex = /(\w+-\w+(-\w+)?)|(\[.*?\])/g;
@@ -54,14 +73,18 @@ function extractItems(input: string) {
   return input.match(regex);
 }
 
-function processRoot(root: any) {
+function processRoot(root: any, prefix: string = "") {
   if (Object.keys(root).length > 0) {
     const obj = Object.keys(root).map((key) => {
       const value = root[key];
       return `${key}: ${value};`;
     });
 
-    return obj.join("");
+    if (prefix !== "" && !prefix.match(/\./)) {
+      prefix = `.${prefix} `;
+    }
+
+    return prefix !== "" ? `${prefix}{ ${obj.join("")} }` : obj.join("");
   }
 
   return "";
@@ -69,61 +92,100 @@ function processRoot(root: any) {
 
 // convert the markup from styles to unocss
 function genStyleRootObj(cssClass: string) {
-  const classDefinitions = cssClass.split('\n');
- 
+  const cssClass_s = cssClass.split("\n");
   const styleArray: Record<string, string[]> = {
     default: [],
   };
-  const rootArray: string[] = [];
+  const rootArray: Record<string, string[]> = {};
 
-  classDefinitions.forEach(classDef => {
-    classDef = classDef.replace("tmp:", "");
+  cssClass_s.forEach(element => {
+    const regex = /(\.\w+){(.*)}/;
+    const match = element.match(regex);
 
-    const regex = /{(.*?)}/;
-    const match = classDef.match(regex);
+    let className = "";
+    let layer: string | undefined = undefined;
 
-    if (match && match[1]) {
-      let layer = undefined;
-      const layerSplitText = match[1].split("##");
+    if (match && match[1] && match[2]) {
+      className = match[1];
+      element = match[2].replace("css:", "");
 
-      if (layerSplitText && layerSplitText.length > 1) {
-        layer = layerSplitText.shift();
-
-        if (!Object.keys(styleArray).includes(layer!)) {
-          styleArray[layer!] = [];
-        }
-      }
-
-      if (layerSplitText && layerSplitText.length > 0) {
-        const splitText = layerSplitText[0]?.split("|");
-
-        if (splitText && splitText[0]) {
-          const newLayer = layer === undefined ? "default" : layer;
-
-          styleArray[newLayer]?.push(splitText[0]);
-        }
-
-        if (splitText && splitText[1] !== ";") {
-          const rootText = splitText[1]?.split(";") || [];
-
-          if (rootText.length > 0) {
-            const rootTextStr = rootText?.map(item => `${item}`).join(";");
-            rootArray.push(`\n${classDef.split("{")[0]}{${rootTextStr}}`);
-          }
-        }
+      if (!Object.keys(rootArray).includes(className)) {
+        rootArray[className] = []
       }
     }
+
+    const classDefinitions = element.split('|');    
+
+    classDefinitions.forEach(classDef => {
+      if (classDef.match(/layer\#/)) {
+        const s_text = classDef.split("layer#");
+
+        if (s_text && s_text[0]) {
+          className = s_text[0];
+        }
+        if (s_text && s_text[1]) {
+          layer = s_text[1]!;
+          styleArray[layer] = []
+        }
+      } else if (classDef.match(/root\#/)) {
+        const s_text = classDef.split("root#");
+
+        if (s_text && s_text[1]) {
+          var re = new RegExp(className, "g");
+          const s_root = s_text[1].replace(re, " ").split("}");
+
+          s_root.forEach((rootItem, index) => {
+            if (index === 0) {
+              const s_rootItem = rootItem.split(";");
+              const items = s_rootItem.filter((item) => item !== "");
+              rootArray[className]?.push(...items);
+            } else {
+              rootItem = rootItem.trimStart();
+
+              if (rootItem[rootItem.length - 1] === ";") {
+                rootItem = `${rootItem}}`;
+              }
+
+              const regex = /(\.\w+){(.*)}/;
+              const match = rootItem.match(regex);
+
+              if (match && match[1] && match[2]) {
+                if (!Object.keys(rootArray).includes(`${match[1]} ${className}`)) {
+                  rootArray[`${match[1]} ${className}`] = []
+                }
+
+                rootArray[`${match[1]} ${className}`]?.push(match[2]);
+              }              
+            }
+          })
+        }
+      } else if (classDef.match(/style\#/)) {
+        const s_text = classDef.split("style#");
+
+        if (s_text && s_text[1]) {
+          const newLayer = layer === undefined ? "default" : layer;
+          styleArray[newLayer]?.push(s_text[1]);
+        }
+      }
+    });
   });
 
   const StyleArrayString: Record<string, string> = {};
 
   Object.keys(styleArray).forEach(key => {
     StyleArrayString[key] = styleArray[key]!.join(' ');
- });
+  });
+
+  let root = "";
+  Object.keys(rootArray).forEach(key => {
+    if (rootArray[key]?.length !== 0) {
+      root += `${key} {${rootArray[key]?.join("; ")}}\n`;
+    }
+  })
 
   return {
      style: JSON.stringify(StyleArrayString),
-     root: `${rootArray.join("")}\n`,
+    root: root
   };
  }
 
@@ -211,8 +273,7 @@ async function genLayers(layersArr: Record<string, string[]>, root: string, clas
   const headers = Object.keys(layersArr).join(", ");
 
   const allPromises = Object.keys(layersArr).map(async(layer) => {
-    const styles = await genUnoCSS(layersArr[layer]!.join(" ").trim());
-
+    const styles = await genUnoCSS(layersArr[layer]!.join(" ").trim());    
     const stylesNL = styles.split("\n").filter(
       (value: string) => !value.includes("layer: default")
     );
@@ -269,85 +330,6 @@ function filterDuplicates(obj: Record<string, string[]>) {
   // Return the filtered object and the dupe array
   return obj;
  }
-
-// function filterDuplicates(keys: string[],obj: Record<string, string[]>) {
-//   console.log("keys", keys);
-
-//   keys.forEach((key) => {
-    
-//   })
-
-//   // for (let i = 0; i < keys.length - 1; i++) {
-//   //   const currentKey = keys[i];
-//   //   const nextKey = keys[i + 1];
-
-//   //   // Get the current and next key values
-//   //   const currentValues = obj[currentKey!];
-//   //   const nextValues = obj[nextKey!];
-
-//   //   // console.log(currentKey, currentValues);
-//   //   // console.log(nextKey, nextValues);
-
-//   //   // // Filter out duplicates from the current key values that exist in the next key values
-//   //   // obj[currentKey!] = currentValues!.filter(
-//   //   //   (value) => !nextValues!.includes(value)
-//   //   // );
-
-//   //   // // Keep track of duplicates
-//   //   // const duplicates = currentValues!.filter((value) =>
-//   //   //   nextValues!.includes(value)
-//   //   // );
-
-//   //   // // Optionally, remove duplicates from the next key values
-//   //   // obj[nextKey!] = nextValues!.filter(value => !duplicates.includes(value));
-
-//   //   // console.log("dupes", duplicates);
-//   // }
-
-//   return obj;
-// }
-
-// function filterDuplicates(keys: string[], obj: Record<string, string[]>): Record<string, string[]> {
-//   // Initialize an array to keep track of duplicates
-//   const duplicates: string[] = [];
- 
-//   console.log("keys", keys);
-
-//   // Loop through all keys
-//   keys.forEach((currentKey, currentIndex) => {
-//      // Get the current key values
-//      const currentValues = obj[currentKey];
-
-//     //  // Loop through all other keys to find duplicates
-//      keys.forEach((otherKey, otherIndex) => {
-//        if (currentIndex !== otherIndex) {
-//          const otherValues = obj[otherKey];
- 
-//          // Find duplicates between current and other key values
-//          const currentDuplicates = currentValues!.filter(value => otherValues!.includes(value));
- 
-//     //      // Add found duplicates to the duplicates array
-//          duplicates.push(...currentDuplicates);
-
-//          console.log("dupes", duplicates);
-//          console.log("otherKey", otherKey);
- 
-//     //      // Remove duplicates from the other key values
-//         //  obj[otherKey] = otherValues!.filter(value => !duplicates.includes(value));
-//        }
-//      });
- 
-//      // Remove duplicates from the current key values
-//     //  obj[currentKey] = currentValues!.filter(value => !duplicates.includes(value));
-//   });
- 
-//   // // Remove duplicates from the last key values
-//   // const lastKey = keys[keys.length - 1];
-//   // // @ts-ignore
-//   // obj[lastKey!] = obj[lastKey!].filter(value => !duplicates.includes(value!));
- 
-//   return obj;
-//  }
 
 export { 
   createGenerator, 
