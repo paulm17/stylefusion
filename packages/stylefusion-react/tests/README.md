@@ -13,13 +13,13 @@
 At the root project terminal:
 
 ```bash
-pnpm nx run @stylefusion/react:test
+pnpm nx run @pigment-css/react:test
 ```
 
 To update the output fixtures:
 
 ```bash
-pnpm nx run @stylefusion/react:test:update
+pnpm nx run @pigment-css/react:test:update
 ```
 
 ## Adding new tests

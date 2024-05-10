@@ -1,5 +1,5 @@
-import { styled as _styled, styled as _styled2, styled as _styled3 } from '@stylefusion/react';
-import _theme from '@stylefusion/react/theme';
+import { styled as _styled, styled as _styled2, styled as _styled3 } from '@pigment-css/react';
+import _theme from '@pigment-css/react/theme';
 const Component = /*#__PURE__*/ _styled('div')({
   classes: ['c194j3ko'],
 });

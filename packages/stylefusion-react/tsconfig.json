@@ -1,14 +1,15 @@
 {
   "extends": "../../tsconfig_pigmentcss_base.json",
   "compilerOptions": {
+    "jsx": "preserve",
     "target": "ES2015",
     "allowJs": true,
     "lib": ["ES2017", "ES2021.String", "DOM"],
     "composite": true,
     "noEmit": false,
     "resolveJsonModule": true,
-    "types": ["node", "mocha"],
+    "types": ["node", "mocha"]
   },
-  "include": ["src/**/*.tsx", "src/**/*.js"],
-  "exclude": ["./tsup.config.ts"]
+  "include": ["src/**/*.tsx", "src/**/*.js", "src/**/*.ts"],
+  "exclude": ["./tsup.config.ts", "src/**/*.d.ts"]
 }

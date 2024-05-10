@@ -13,16 +13,16 @@ import type { CSSInterpolation } from '@emotion/css';
 import deepMerge from 'lodash/merge';
 import BaseProcessor from './base-processor';
 import type { IOptions } from './styled';
-import { cache, css } from '../utils/emotion';
 import type { Primitive, TemplateCallback } from './keyframes';
-import { processStyles } from "@stylefusion/unocss"
+import { processStyles } from "@stylefusion/css";
+import { getCacheInstance } from '../utils/cache';
 
 /**
  * @description Scope css class generation similar to css from emotion.
  *
  * @example
  * ```ts
- * import { css } from '@stylefusion/react';
+ * import { css } from '@stylefusion-css/react';
  *
  * const class1 = css(({theme}) => ({
  *  color: (theme.vars || theme).palette.primary.main,
@@ -33,7 +33,7 @@ import { processStyles } from "@stylefusion/unocss"
  */
 export class CssProcessor extends BaseProcessor {
   styleRoot: string
-  styleStr: string
+  styleStr: string[]
   callParam: CallParam | TemplateParam;
 
   constructor(params: Params, ...args: TailProcessorParams) {
@@ -59,7 +59,7 @@ export class CssProcessor extends BaseProcessor {
       });
     }
     this.styleRoot = "";
-    this.styleStr = "";
+    this.styleStr = [];
     this.callParam = callParams;
   }
 
@@ -115,16 +115,59 @@ export class CssProcessor extends BaseProcessor {
     });
     this.generateArtifacts(templateStrs, ...templateExpressions);
   }
-  async generateArtifacts(styleObjOrTaggged: any | string[], ...args: Primitive[]) {  
-    const { root, layer, styles } = processStyles(styleObjOrTaggged);
 
+  fixValue(value: string) {
+    return value.replace("width:full", "width:100%");
+  }
+
+  generateArtifacts(styleObjOrTaggged: any, ...args: Primitive[]) {
+    const { root, layer, styles } = processStyles(styleObjOrTaggged, this.className);
+
+    Object.keys(layer).forEach((key) => {
+      styles.push(...layer[key]);
+    })
+    
     this.styleRoot = root;
-    this.styleStr = styles;
+    this.styleStr = [];
 
+    const cacheInstance = getCacheInstance(undefined);    
+
+    styles.forEach((line: string) => {
+      const _line = line.split("||");
+      const selector = `${_line[0]}|${this.fixValue(_line[1])}`;
+
+      if (cacheInstance.has(selector)) {
+        const id = cacheInstance.get(selector);
+        this.styleStr.push(id.split("|")[1]);
+      } else {
+        this.styleStr.push(selector.split("|")[1]);
+      }
+
+      cacheInstance.set(_line[4], selector);   
+    });
+
+    Object.keys(layer).map((key: string) => {
+      layer[key].map((line: string) => {
+        const _line = line.split("||");
+        const selector = `${_line[0]}|${_line[1]}`;
+
+        if (cacheInstance.has(selector)) {
+          const id = cacheInstance.get(selector);
+          this.styleStr.push(id.split("|")[1]);
+        } else {
+          this.styleStr.push(selector.split("|")[1]);
+        }
+
+        cacheInstance.set(_line[4], selector);
+      });
+    });   
+
+    const cssText = `css:layer#${JSON.stringify(layer)}||||style#${styles.join("|||")}||||root#${this.styleRoot}`;
+    
     const rules: Rules = {
       [this.asSelector]: {
         className: this.className,
-        cssText: `css:layer#${layer}|style#${this.styleStr}|root#${this.styleRoot}`,
+        cssText: cssText,
         displayName: this.displayName,
         start: this.location?.start ?? null,
       },
@@ -132,7 +175,7 @@ export class CssProcessor extends BaseProcessor {
 
     const sourceMapReplacements: Replacements = [
       {
-        length: this.className.length,
+        length: cssText.length,
         original: {
           start: {
             column: this.location?.start.column ?? 0,
@@ -145,7 +188,6 @@ export class CssProcessor extends BaseProcessor {
         },
       },
     ];
-
     this.artifacts.push(['css', [rules, sourceMapReplacements]]);
   }
 
@@ -154,7 +196,6 @@ export class CssProcessor extends BaseProcessor {
 
     callArgs.forEach((callArg) => {
       let styleObj: CSSInterpolation;
-
       if (callArg.kind === ValueType.LAZY) {
         styleObj = values.get(callArg.ex.name) as CSSInterpolation;
       } else if (callArg.kind === ValueType.FUNCTION) {
@@ -168,8 +209,7 @@ export class CssProcessor extends BaseProcessor {
       if (styleObj) {
         deepMerge(mergedStyleObj, styleObj);
       }
-    })
-
+    });
     if (Object.keys(mergedStyleObj).length > 0) {
       this.generateArtifacts(mergedStyleObj);
     }
@@ -183,11 +223,12 @@ export class CssProcessor extends BaseProcessor {
     this.doEvaltimeReplacement();
   }
 
+  // @ts-ignore
   get asSelector() {
     return `.${this.className}`;
   }
 
   get value(): Expression {
-    return this.astService.stringLiteral(`${this.className} ${this.styleStr}`);
+    return this.astService.stringLiteral(`${this.className} ${this.styleStr.join(" ")}`);
   }
 }

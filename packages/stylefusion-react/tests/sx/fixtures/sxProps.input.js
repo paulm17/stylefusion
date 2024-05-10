@@ -1,4 +1,4 @@
-import { styled } from '@stylefusion/react';
+import { styled } from '@pigment-css/react';
 
 export const SliderRail = styled('span', {
   name: 'MuiSlider',

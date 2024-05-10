@@ -138,7 +138,6 @@ export function extendTheme<
     shouldSkipGeneratingVar,
     getSelector,
   };
-  // @ts-ignore
   const { generateThemeVars, generateStyleSheets } = prepareCssVars(otherTheme, parserConfig);
 
   const finalTheme = {

@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import * as React from 'react';
+import PropTypes from 'prop-types';
 
-export const Box = React.forwardRef(
+const Box = React.forwardRef(
   (
     {
       as = 'div',
@@ -50,3 +51,31 @@ export const Box = React.forwardRef(
     return <Component ref={ref} className={classes} style={styles} {...rest} />;
   },
 );
+
+Box.propTypes /* remove-proptypes */ = {
+  // ┌────────────────────────────── Warning ──────────────────────────────┐
+  // │ These PropTypes are generated from the TypeScript type definitions. │
+  // │    To update them, edit the d.ts file and run `pnpm proptypes`.     │
+  // └─────────────────────────────────────────────────────────────────────┘
+  /**
+   * The component used for the root node.
+   * Either a string to use a HTML element or a component.
+   * Replacement for the emotion's `as` prop.
+   */
+  as: PropTypes.elementType,
+  /**
+   * The content of the component.
+   */
+  children: PropTypes.node,
+  /**
+   * The component used for the root node.
+   * Either a string to use a HTML element or a component.
+   */
+  component: PropTypes.elementType,
+  /**
+   * The style extension prop that allows defining system overrides as well as additional CSS styles.
+   */
+  sx: PropTypes.oneOfType([PropTypes.func, PropTypes.object]),
+};
+
+export default Box;

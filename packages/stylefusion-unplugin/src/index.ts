@@ -1,5 +1,4 @@
 import * as path from 'node:path';
-// @ts-ignore
 import { transformAsync } from '@babel/core';
 import {
   type Preprocessor,
@@ -22,12 +21,16 @@ import {
   generateThemeTokens,
   extendTheme,
   type Theme as BaseTheme,
+  type PluginCustomOptions,
 } from '@stylefusion/react/utils';
 import type { ResolvePluginInstance } from 'webpack';
-import { extractClassNames, genLayers, genStyleRootObj } from "@stylefusion/unocss"
 import os from 'node:os';
 import fsPromises from 'fs/promises';
 import fs from 'fs';
+import { extractClassNames, genLayers, genStyleRootObj } from "@stylefusion/css"
+import {type layersType} from "@stylefusion/css";
+
+import { handleUrlReplacement, type AsyncResolver } from './utils';
 
 type NextMeta = {
   type: 'next';
@@ -35,6 +38,7 @@ type NextMeta = {
   isServer: boolean;
   outputCss: boolean;
   placeholderCssFile: string;
+  projectPath: string;
 };
 
 type ViteMeta = {
@@ -46,7 +50,6 @@ type WebpackMeta = {
 };
 
 type Meta = NextMeta | ViteMeta | WebpackMeta;
-export type AsyncResolver = (what: string, importer: string, stack: string[]) => Promise<string>;
 
 export type PigmentOptions<Theme extends BaseTheme = BaseTheme> = {
   theme?: Theme;
@@ -62,7 +65,8 @@ export type PigmentOptions<Theme extends BaseTheme = BaseTheme> = {
     libraries: string[],
     filename: string,
   }
-} & Partial<WywInJsPluginOptions>;
+} & Partial<WywInJsPluginOptions> &
+  Omit<PluginCustomOptions, 'themeArgs'>;
 
 const extensions = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mts', '.cts'];
 
@@ -115,16 +119,31 @@ async function genComponentList(components: string) {
   }
 
   return [];
-}  
+} 
 
-function generateRandomString(length = 8) {
-  let result = '';
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const charactersLength = characters.length;
-  for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
+function deepMerge(...objs: any) {
+  let clone = structuredClone(objs.shift());
+
+  objs.forEach((obj: any) => {
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (Array.isArray(obj[key]) && Array.isArray(clone[key])) {
+          // Custom array merge behavior
+          clone[key] = [...new Set([...clone[key], ...obj[key]])];
+        } else if (obj[key] instanceof Object && clone[key] instanceof Object) {
+          clone[key] = deepMerge(clone[key], obj[key]);
+        } else {
+          clone[key] = obj[key];
+        }
+      }
+    }
+  });
+
+  return clone;
+}
+
+function structuredClone(obj: any) {
+  return JSON.parse(JSON.stringify(obj));
 }
 
 export const plugin = createUnplugin<PigmentOptions, true>((options) => {
@@ -132,13 +151,14 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     theme,
     meta,
     transformLibraries = [],
-    preprocessor = basePreprocessor,
+    preprocessor,
     asyncResolve: asyncResolveOpt,
     debug = false,
     sourceMap = false,
     transformSx = true,
     overrideContext,
     tagResolver,
+    css,
     ...rest
   } = options;
   const cache = new TransformCacheCollection();
@@ -149,12 +169,10 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   const outputCss = isNext && meta.outputCss;
   const allComponents = [] as string[];
   const imports = [] as string[];
-  const cssFiles = new Set<string>();
-  const layerStyles = {} as Record<string, string[]>;
-  const unoStyles = new Set<string>();
-
+  const cssStyles = new Set<string>();
+  let mergedCssObj = {} as layersType;  
   const babelTransformPlugin: UnpluginOptions = {
-    name: 'zero-plugin-transform-babel',
+    name: 'pigment-css-plugin-transform-babel',
     enforce: 'post',
     transformInclude(id) {
       return isZeroRuntimeProcessableFile(id, transformLibraries);
@@ -175,7 +193,7 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
       };
     },
   };
-
+  const projectPath = meta?.type === 'next' ? meta.projectPath : process.cwd();
 
   let webpackResolver: AsyncResolver;
 
@@ -190,42 +208,63 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
     return asyncResolveFallback(what, importer, stack);
   };
 
-  async function checkFileExists(filePath: string) {
-    try {
-       await fsPromises.access(filePath, fsPromises.constants.F_OK);
-       return true; // File exists
-    } catch (error) {
-       return false; // File does not exist
-    }
-   }
+  const withRtl = (selector: string, cssText: string) => {
+    return basePreprocessor(selector, cssText, css);
+  };
 
   const wywInJSTransformPlugin: UnpluginOptions = {
-    name: 'zero-plugin-transform-wyw-in-js',
+    name: 'pigment-css-plugin-transform-wyw-in-js',
     enforce: 'post',
-    async buildEnd() {
-      // clean up css files
-      // try {
-      //   const valid = await checkFileExists(fileName);
-      //   if (valid) {
-      //     await fsPromises.unlink(fileName);          
-      //   }
-      // } catch (error) {}  
-
+    buildEnd() {
       onDone(process.cwd());
     },
-    transformInclude(id) {      
+    transformInclude(id) {
       return isZeroRuntimeProcessableFile(id, transformLibraries);
     },
-    async transform(code, id) {
+    webpack(compiler) {
+      const resolverPlugin: ResolvePluginInstance = {
+        apply(resolver: any) {
+          webpackResolver = function webpackAsyncResolve(
+            what: string,
+            importer: string,
+            stack: string[],
+          ) {
+            const context = path.isAbsolute(importer)
+              ? path.dirname(importer)
+              : path.join(process.cwd(), path.dirname(importer));
+            return new Promise((resolve, reject) => {
+              resolver.resolve({}, context, what, { stack: new Set(stack) }, (err: any, result: any) => {
+                if (err) {
+                  reject(err);
+                } else if (result) {
+                  resolve(result);
+                } else {
+                  reject(new Error(`${process.env.PACKAGE_NAME}: Cannot resolve ${what}`));
+                }
+              });
+            });
+          };
+        },
+      };
+      compiler.options.resolve.plugins = compiler.options.resolve.plugins || [];
+      compiler.options.resolve.plugins.push(resolverPlugin);
+    },
+    async transform(code, filePath) {
+      const [id] = filePath.split('?');
       const transformServices = {
         options: {
           filename: id,
           root: process.cwd(),
-          preprocessor,
+          preprocessor: preprocessor ?? withRtl,
           pluginOptions: {
             ...rest,
             themeArgs: {
               theme,
+            },
+            features: {
+              useWeakRefInEval: false,
+              // If users know what they are doing, let them override to true
+              ...rest.features,
             },
             overrideContext(context: Record<string, unknown>, filename: string) {
               if (overrideContext) {
@@ -248,11 +287,13 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
             },
             babelOptions: {
               ...rest.babelOptions,
-              // plugins: [
-              //   `${process.env.RUNTIME_PACKAGE_NAME}/exports/remove-prop-types-plugin`,
-              //   'babel-plugin-define-var', // A fix for undefined variables in the eval phase of wyw-in-js, more details on https://github.com/siriwatknp/babel-plugin-define-var?tab=readme-ov-file#problem
-              //   ...(rest.babelOptions?.plugins ?? []),
-              // ],
+              plugins: [
+                require.resolve(
+                  `${process.env.RUNTIME_PACKAGE_NAME}/exports/remove-prop-types-plugin`,
+                ),
+                'babel-plugin-define-var', // A fix for undefined variables in the eval phase of wyw-in-js, more details on https://github.com/siriwatknp/babel-plugin-define-var?tab=readme-ov-file#problem
+                ...(rest.babelOptions?.plugins ?? []),
+              ],
             },
           },
         },
@@ -288,10 +329,12 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
 
         return libraryMatch && componentsMatch;
       }
-      
+
       try {
         // load all components from purge option
-        if (options.purge && options.purge.filename) {
+        const isDev = (meta as any).dev;        
+
+        if (!isDev && options.purge && options.purge.filename) {
           if (allComponents.length === 0) {
             const componentList = await genComponentList(options.purge.filename);
 
@@ -309,8 +352,8 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
               return null;
             }
           }
-        }        
-
+        }
+        
         if (id.endsWith(".tsx")) {
           // retrieve validated imports
           imports.push(...genValidImports(code));
@@ -319,8 +362,8 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
           const unocssStyles = extractClassNames(code) as string;
           const unoStyles_s = unocssStyles.split(" ");
           unoStyles_s.forEach(style => {
-            if (style !== "" && !unoStyles.has(style)) {
-              unoStyles.add(style);
+            if (style !== "" && !cssStyles.has(style)) {
+              cssStyles.add(style);
             }
           });
         }        
@@ -331,50 +374,52 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
           return null;
         }
 
+        // instead loop through rules to generate cssText output
+        // cssText from transform service mangles css found in cssText
+        const rules = {} as Record<string, string>;
+
+        Object.keys(result.rules!).forEach((key) => {
+          const rule = result.rules![key];
+          rules[key] = rule!.cssText.replace("css:", "");
+        })
+
+        let { css } = await genStyleRootObj(rules);
+
         let { cssText } = result;
-        let { css } = genStyleRootObj(cssText);
-
-        // const styles = JSON.parse(css);
-        // Object.keys(styles).forEach((key) => {
-        //   if (!layerStyles[key]) {
-        //     layerStyles[key] = [] as string[];
-
-        //     styles[key].split(" ").forEach((style: string) => {
-        //       if (!layerStyles[key]!.includes(style)) {
-        //         layerStyles[key]!.push(style);
-        //       }
-        //     })
-        //   } else {
-        //     styles[key].split(" ").forEach((style: string) => {
-        //       if (!layerStyles[key]!.includes(style)) {
-        //         layerStyles[key]!.push(style);
-        //       }
-        //     })
-        //   }
-        // });
-
         if (isNext && !outputCss) {
           return {
             code: result.code,
             map: result.sourceMap,
           };
         }
-      
-        if (sourceMap && result.cssSourceMapText) {
-          const map = Buffer.from(result.cssSourceMapText).toString('base64');
-          cssText += `/*# sourceMappingURL=data:application/json;base64,${map}*/`;
-        }
-
-        // Virtual modules do not work consistently in Next.js (the build is done at least
-        // thrice) resulting in error in subsequent builds. So we use a placeholder CSS
-        // file with the actual CSS content as part of the query params.
 
         if (isNext) {
-          const layers = await genLayers(css, unoStyles);
+          // Handle url() replacement in css. Only handled in Next.js as the css is injected
+          // through the use of a placeholder CSS file that lies in the nextjs plugin package.
+          // So url paths can't be resolved relative to that file.
+          if (cssText && cssText.includes('url(')) {
+            cssText = await handleUrlReplacement(cssText, id, asyncResolve, projectPath);
+          }
+        }
+
+        // if (sourceMap && result.cssSourceMapText) {
+        //   const map = Buffer.from(result.cssSourceMapText).toString('base64');
+        //   cssText += `/*# sourceMappingURL=data:application/json;base64,${map}*/`;
+        // }
+
+        // Virtual modules do not work consistently in Next.js (the build is done at least
+        // thrice with different combination of parameters) resulting in error in
+        // subsequent builds. So we use a placeholder CSS file with the actual CSS content
+        // as part of the query params.
+        if (isNext) {
+          // css process is split into rounds, merge into 1 object for final pass
+          mergedCssObj = deepMerge(mergedCssObj, JSON.parse(css));
+
+          const layers = await genLayers(JSON.stringify(mergedCssObj), cssStyles);
 
           // Use a file to pass styles to virtual-css-loader otherwise the placeholder duplicates
           // the same styles :( 
-          const fileName = `raikou_tmp_file.txt`;         
+          const fileName = `raikou_tmp_file_styles.txt`;         
           const filePath = `${os.tmpdir()}/${fileName}`;
           // don't async otherwise corruption occurs
           fs.writeFileSync(filePath, layers, { encoding: 'utf8', flag: 'w', mode: 0o666 });
@@ -384,52 +429,23 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
               source: fileName,
             }),
           )}`;
-
           return {
             // CSS import should be the last so that nested components produce correct CSS order injection.
-            code: `${result.code}\n import ${JSON.stringify(data)}`,
+            code: `${result.code}\nimport ${JSON.stringify(data)};`,
             map: result.sourceMap,
           };
-        } 
+        }
       } catch (e) {
         const error = new Error((e as Error).message);
         error.stack = (e as Error).stack;
         throw error;
       }
     },
-    webpack(compiler) {
-      const resolverPlugin: ResolvePluginInstance = {
-        apply(resolver) {
-          webpackResolver = function webpackAsyncResolve(
-            what: string,
-            importer: string,
-            stack: string[],
-          ) {
-            const context = path.isAbsolute(importer)
-              ? path.dirname(importer)
-              : path.join(process.cwd(), path.dirname(importer));
-            return new Promise((resolve, reject) => {
-              resolver.resolve({}, context, what, { stack: new Set(stack) }, (err, result) => {
-                if (err) {
-                  reject(err);
-                } else if (result) {
-                  resolve(result);
-                } else {
-                  reject(new Error(`${process.env.PACKAGE_NAME}: Cannot resolve ${what}`));
-                }
-              });
-            });
-          };
-        },
-      };
-      compiler.options.resolve.plugins = compiler.options.resolve.plugins || [];
-      compiler.options.resolve.plugins.push(resolverPlugin);
-    },
   };
 
   const plugins: Array<UnpluginOptions> = [
     {
-      name: 'zero-plugin-theme-tokens',
+      name: 'pigment-css-plugin-theme-tokens',
       enforce: 'pre',
       webpack(compiler) {
         compiler.hooks.normalModuleFactory.tap(pluginName, (nmf) => {
@@ -437,12 +453,12 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
             pluginName,
             // @ts-expect-error CreateData is typed as 'object'...
             (createData: { matchResource?: string; settings: { sideEffects?: boolean } }) => {
-              if (createData.matchResource && createData.matchResource.endsWith('.zero.css')) {
+              if (createData.matchResource && createData.matchResource.endsWith('.pigment.css')) {
                 createData.settings.sideEffects = true;
               }
             },
           );
-        });        
+        });
       },
       ...(isNext
         ? {
@@ -450,16 +466,16 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
               return (
                 // this file should exist in the package
                 id.endsWith(`${process.env.RUNTIME_PACKAGE_NAME}/styles.css`) ||
-                id.endsWith('/stylefusion-react/styles.css') ||
+                id.endsWith('/pigment-css-react/styles.css') ||
                 id.includes(`${process.env.RUNTIME_PACKAGE_NAME}/theme`) ||
-                id.includes('/stylefusion-react/theme')
+                id.includes('/pigment-css-react/theme')
               );
             },
             transform(_code, id) {
               if (id.endsWith('styles.css')) {
                 return theme ? generateTokenCss(theme) : _code;
               }
-              if (id.includes('stylefusion-react/theme')) {
+              if (id.includes('pigment-css-react/theme')) {
                 return `export default ${
                   theme ? JSON.stringify(generateThemeTokens(theme)) : '{}'
                 };`;
@@ -498,19 +514,18 @@ export const plugin = createUnplugin<PigmentOptions, true>((options) => {
   if (transformSx) {
     plugins.push(babelTransformPlugin);
   }
-
   plugins.push(wywInJSTransformPlugin);
 
   // This is already handled separately for Next.js using `placeholderCssFile`
   if (!isNext) {
     plugins.push({
-      name: 'zero-plugin-load-output-css',
+      name: 'pigment-css-plugin-load-output-css',
       enforce: 'pre',
       resolveId(source: string) {
         return cssFileLookup.get(source);
       },
       loadInclude(id) {
-        return id.endsWith('.zero.css');
+        return id.endsWith('.pigment.css');
       },
       load(id) {
         return cssLookup.get(id) ?? '';
@@ -525,4 +540,4 @@ export const webpack = plugin.webpack as unknown as UnpluginFactoryOutput<
   WebpackPluginInstance
 >;
 
-export { extendTheme };
+export { type AsyncResolver, extendTheme };

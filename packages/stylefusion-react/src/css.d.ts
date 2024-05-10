@@ -1,54 +1,10 @@
-type interactions = "active"
-| "enabled"
-| "disabled"
-| "hover"
-| "focus"
-| "focus-within"
-| "focus-visible" 
-| "dark" 
-| "data-[enabled]" 
-| "data-[disabled]" 
-| "data-[active]";
+import type { CSSObjectNoCallback } from './base';
+import type { ThemeArgs } from './theme';
 
-type positional = "first" 
-| "last" 
-| "only"
-| "odd"
-| "even"
-| "first-of-type"
-| "last-of-type"
-| "only-of-type";
-
-type content = "empty";
-
-type state = "visited" | "open";
-
-type forms = "default" 
-| "checked" 
-| "intermediate" 
-| "placeholder-shown"
-| "autofill"
-| "optional"
-| "required"
-| "valid"
-| "invalid"
-| "in-range"
-| "out-of-range"
-| "read-only";
-
-type psudeoElement = "backdrop-element" 
-| "backdrop"
-| "placeholder" 
-| "before" 
-| "after" 
-| "selection" 
-| "marker" 
-| "file"
-| "first-letter"
-| "first-line"; 
-
-type StyleKeys = "root" | "layer" | "base" | interactions | positional | content | forms | state | psudeoElement;
-type StyleValue = string | string[] | Record<string, string> | StyleObject;
+type Primitve = string | null | undefined | boolean | number;
+type StyleKeys = "root" | "layer" | "base" | "rtl" | "active" | "hover" | "focus" | "light" | "dark";
+type StyleValueValue = string | number | CSSObjectNoCallback | StyleObject | Object;
+type StyleValue = Record<string, StyleValueValue> | StyleValueValue;
 
 // Step 2: Create a Recursive Type for Nested Structures
 type StyleObject = {
@@ -60,16 +16,18 @@ type CSSObject = StyleObject & {
  [key: string]: StyleValue;
 };
 
-// Define the Css interface with the same pattern as Code A
+type CssArg = ((themeArgs: ThemeArgs) => CSSObject) | CSSObject;
+type CssFn = (themeArgs: ThemeArgs) => CSSObject;
+
 interface Css {
- /**
+  /**
    * @returns {string} The generated css class name to be referenced.
    */
- (arg: TemplateStringsArray, ...templateArgs: (StyleValue | ((themeArgs: any) => CSSObject))[]): string;
- /**
+  (arg: CSSObject, ...templateArgs: (Primitve | CssFn)[]): string;
+  /**
    * @returns {string} The generated css class name to be referenced.
    */
- (...arg: CSSObject[]): string;
+  (...arg: CssArg[]): string;
 }
 
 declare const css: Css;

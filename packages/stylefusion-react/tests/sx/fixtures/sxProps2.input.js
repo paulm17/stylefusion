@@ -1,4 +1,4 @@
-import { styled } from '@stylefusion/react';
+import { styled } from '@pigment-css/react';
 
 const autocompleteClasses = {
   option: 'MuiAutocomplete-option',
@@ -15,6 +15,10 @@ const SliderRail = styled('span', {
   opacity: 0.38;
   font-size: ${({ theme }) => (theme.vars ?? theme).size.font.h1};
 `;
+
+const A = {
+  SliderRail,
+};
 
 function App(props) {
   return (
@@ -47,7 +51,7 @@ function App2() {
 
 function App3(props) {
   return (
-    <SliderRail
+    <A.SliderRail
       sx={({ theme }) => ({
         color: (theme.vars || theme).palette.primary.main,
         fontSize: props.isRed ? 'h1-fontSize' : 'h2-fontSize',

@@ -8,7 +8,7 @@ import {
   transform as wywTransform,
   createFileReporter,
 } from '@wyw-in-js/transform';
-import { PluginCustomOptions, preprocessor } from '@stylefusion/react/utils';
+import { PluginCustomOptions, preprocessor } from '@pigment-css/react/utils';
 import * as prettier from 'prettier';
 
 import sxTransformPlugin from '../exports/sx-plugin';
@@ -51,7 +51,10 @@ export async function runTransformation(
       babelrc: false,
       plugins: ['@babel/plugin-syntax-jsx'],
     },
-    tagResolver(_source: string, tag: string) {
+    tagResolver(source: string, tag: string) {
+      if (source !== '@pigment-css/react') {
+        return null;
+      }
       return require.resolve(`../exports/${tag}`);
     },
   };

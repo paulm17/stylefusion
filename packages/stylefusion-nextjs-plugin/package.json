@@ -1,17 +1,25 @@
 {
   "name": "@stylefusion/nextjs-plugin",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "main": "build/index.js",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",
-  "author": "Paul Moss",
-  "description": "Next.js integration for StyleFusion",
+  "author": "MUI Team",
+  "description": "Next.js integration for Pigment CSS.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/paulm17/stylefusion.git",
-    "directory": "packages/stylefusion-nextjs-plugin"
+    "url": "https://github.com/mui/pigment-css.git",
+    "directory": "packages/pigment-css-nextjs-plugin"
   },
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mui/pigment-css/issues"
+  },
+  "homepage": "https://github.com/mui/pigment-css/tree/master/README.md",
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/mui-org"
+  },
   "scripts": {
     "clean": "rimraf build types",
     "watch": "tsup --watch --tsconfig tsconfig.build.json",
@@ -20,9 +28,9 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@stylefusion/unplugin": "workspace:*"    
+    "@stylefusion/unplugin": "workspace:^"
   },
-  "devDependencies": {    
+  "devDependencies": {
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.73",    
     "next": "^13.5.1"
@@ -39,6 +47,7 @@
     "loader.js",
     "next-font.js",
     "next-image.js",
+    "third-party-styled.js",
     "zero-virtual.css",
     "package.json",
     "LICENSE"

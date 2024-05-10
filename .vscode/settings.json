@@ -3,5 +3,20 @@
     {
       "mode": "auto"
     }
+  ],
+  // "editor.quickSuggestions": {
+  //   "other": false,
+  //   "comments": false,
+  //   "strings": false
+  // },
+  // "editor.hover.enabled": false,
+  "masterCSS.includedLanguages": [
+    "javascript",
+    "typescript",
+    "javascriptreact",
+    "typescriptreact",
+  ],
+  "masterCSS.classFunctions": [
+    "css",
   ]
 }

@@ -1,4 +1,4 @@
-import { styled, keyframes } from '@stylefusion/react';
+import { styled, keyframes } from '@pigment-css/react';
 
 const rotateKeyframe = keyframes({
   from: {
