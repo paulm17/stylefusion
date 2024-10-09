@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "paths": {
+      "@babel/core": ["./node_modules/@babel/core"],
+      "@stylefusion/react": ["./packages/react/src"],
+      "@stylefusion/react/*": ["./packages/react/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["./tsup.config.ts"]
+}

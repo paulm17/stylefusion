@@ -1,30 +1,34 @@
-## Getting Started
+# Pigment CSS - Vite with TypeScript example project
 
-First, run the development server:
+## How to use
+
+Download the example [or clone the repo](https://github.com/mui/pigment-css):
+
+<!-- #default-branch-switch -->
 
 ```bash
-yarn dev
+curl https://codeload.github.com/mui/pigment-css/tar.gz/master | tar -xz --strip=2 pigment-css-master/examples/pigment-css-vite-ts
+cd pigment-css-vite-ts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Install it and run:
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+or:
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+<!-- #default-branch-switch -->
 
-## Learn More
+[![Edit on StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/mui/pigment-css/tree/master/examples/pigment-css-vite-ts)
 
-To learn more about Next.js, take a look at the following resources:
+[![Edit on CodeSandbox](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/p/sandbox/github/mui/pigment-css/tree/master/examples/pigment-css-vite-ts)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn/foundations/about-nextjs) - an interactive Next.js tutorial.
+## Learn more
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+To learn more about this example:
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_source=github.com&utm_medium=referral&utm_campaign=turborepo-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- [Pigment CSS documentation](https://github.com/mui/pigment-css/blob/master/README.md) - learn more about Pigment CSS features and APIs.
+- [Vite documentation](https://vite.dev/guide/) - learn about Vite features and APIs.

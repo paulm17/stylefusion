@@ -1,27 +1,24 @@
 {
   "name": "web",
-  "version": "1.0.0",
   "private": true,
+  "version": "5.0.0",
+  "type": "module",
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
-    "nextdev": "next dev",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@stylefusion/react": "workspace:*",
-    "@stylefusion/nextjs-plugin": "workspace:*",
-    "@tabler/icons-react": "^2.25.0",
-    "next": "^13.5.4",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "zustand": "^4.4.0"
+    "@stylefusion/react": "workspace:^",
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "@types/node": "20.5.1",
-    "@types/react": "^18.2.23",
-    "@types/react-dom": "^18.2.8",
-    "typescript": "5.1.6"
+    "@stylefusion/vite-plugin": "workspace:^",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "typescript": "latest",
+    "vite": "latest"
   }
 }

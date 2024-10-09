@@ -1,3 +1,26 @@
 {
-  "extends": "@repo/typescript-config/base.json"
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "es5",
+    "lib": ["es2020", "dom"],
+    "jsx": "preserve",
+    "moduleResolution": "node",
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "baseUrl": "./",
+    "allowSyntheticDefaultImports": true,
+    "noErrorTruncation": false,
+    "allowJs": true,
+    "paths": {
+      "@stylefusion/react": ["./packages/react/src"],
+      "@stylefusion/react/*": ["./packages/react/src/*"],
+      "@stylefusion/vite-plugin": ["./packages/vite-plugin/src"],
+      "@stylefusion/vite-plugin/*": ["./packages/vite-plugin/src/*"],
+    },
+    // Otherwise we get react-native typings which conflict with dom.lib.
+    "types": ["node", "react"]
+  },
+  "exclude": ["**/.*/", "**/build", "**/node_modules", "docs/export"]
 }
