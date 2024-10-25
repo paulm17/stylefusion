@@ -4,7 +4,7 @@ Stylefusion CSS is a zero-runtime CSS-in-JS library that extracts the colocated
 
 ## Why?
 
-Mantine 7 was created with CSS Modules, which many consider a step back from CSS-in-JS.  Which was used with Mantine 6.  CSS-in-JS gives you many benefits such as:-
+Mantine 6 used CSS-in-JS and with the release of 7 they switched to CSS Modules.  CSS Modules are great for small projects, but they don't offer the same benefits as CSS-in-JS.  Such as:-
 
 - Colocated styles
 - Build time extraction of styles to CSS files
