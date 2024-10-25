@@ -15,6 +15,8 @@ import BaseProcessor from './base-processor';
 import type { IOptions } from './styled';
 import { cache, css } from '../utils/emotion';
 import type { Primitive, TemplateCallback } from './keyframes';
+import { processAtomicStyles } from "./css-processor"
+import { preset } from '../utils/preset';
 
 /**
  * @description Scope css class generation similar to css from emotion.
@@ -32,6 +34,7 @@ import type { Primitive, TemplateCallback } from './keyframes';
  */
 export class CssProcessor extends BaseProcessor {
   callParam: CallParam | TemplateParam;
+  atomicClasses: string[];
 
   constructor(params: Params, ...args: TailProcessorParams) {
     if (params.length < 2) {
@@ -56,6 +59,7 @@ export class CssProcessor extends BaseProcessor {
         }
       });
     }
+    this.atomicClasses = [];
     this.callParam = callParams;
   }
 
@@ -114,34 +118,81 @@ export class CssProcessor extends BaseProcessor {
   }
 
   generateArtifacts(styleObjOrTaggged: CSSInterpolation | string[], ...args: Primitive[]) {
-    const cssClassName = css(styleObjOrTaggged, ...args);
-    const cssText = cache.registered[cssClassName] as string;
+    const { atomic, themeArgs } = this.options as IOptions;
 
-    const rules: Rules = {
-      [this.asSelector]: {
-        className: this.className,
-        cssText: `cssText:${cssText.replaceAll(" ", "",)}`,
-        displayName: this.displayName,
-        start: this.location?.start ?? null,
-      },
-    };
+    // run through the preset function if Raikou theme is provided
+    if (themeArgs?.theme) {
+      styleObjOrTaggged = preset(styleObjOrTaggged);
+    }
 
-    const sourceMapReplacements: Replacements = [
-      {
-        length: cssText.length,
-        original: {
-          start: {
-            column: this.location?.start.column ?? 0,
-            line: this.location?.start.line ?? 0,
-          },
-          end: {
-            column: this.location?.end.column ?? 0,
-            line: this.location?.end.line ?? 0,
+    if (!atomic) {
+      const cssClassName = css(styleObjOrTaggged, ...args);
+      const cssText = cache.registered[cssClassName] as string;
+
+      const rules: Rules = {
+        [this.asSelector]: {
+          className: this.className,
+          cssText: cssText,
+          displayName: this.displayName,
+          start: this.location?.start ?? null,
+        },
+      };
+
+      const sourceMapReplacements: Replacements = [
+        {
+          length: cssText.length,
+          original: {
+            start: {
+              column: this.location?.start.column ?? 0,
+              line: this.location?.start.line ?? 0,
+            },
+            end: {
+              column: this.location?.end.column ?? 0,
+              line: this.location?.end.line ?? 0,
+            },
           },
         },
-      },
-    ];
-    this.artifacts.push(['css', [rules, sourceMapReplacements]]);
+      ];
+
+      this.artifacts.push(['css', [rules, sourceMapReplacements]]);      
+    } else {
+      const styles = processAtomicStyles(styleObjOrTaggged, this.className);
+      this.atomicClasses = [];
+
+      Object.keys(styles).forEach((key) => {
+        const s_key = key.split("|");
+        const id = s_key[0];
+        const className = s_key[1];
+        this.atomicClasses.push(id);
+
+        const rules: Rules = {
+          [className]: {
+            className: id,
+            cssText: styles[key],
+            displayName: this.displayName,
+            start: this.location?.start ?? null,
+          },
+        };
+  
+        const sourceMapReplacements: Replacements = [
+          {
+            length: styles[key].length,
+            original: {
+              start: {
+                column: this.location?.start.column ?? 0,
+                line: this.location?.start.line ?? 0,
+              },
+              end: {
+                column: this.location?.end.column ?? 0,
+                line: this.location?.end.line ?? 0,
+              },
+            },
+          },
+        ];
+  
+        this.artifacts.push(['css', [rules, sourceMapReplacements]]);
+      });
+    }
   }
 
   private handleCall([, ...callArgs]: CallParam, values: ValueCache) {
@@ -156,10 +207,8 @@ export class CssProcessor extends BaseProcessor {
         const value = values.get(callArg.ex.name) as (
           args: Record<string, unknown> | undefined,
         ) => CSSInterpolation;
-        styleObj = value({theme: themeArgs?.theme, id: `${this.className}`});
+        styleObj = value(themeArgs);
       }
-
-      console.log(styleObj);
 
       if (styleObj) {
         deepMerge(mergedStyleObj, styleObj);
@@ -183,6 +232,12 @@ export class CssProcessor extends BaseProcessor {
   }
 
   get value(): Expression {
+    const { atomic } = this.options as IOptions;
+
+    if (atomic) {
+      return this.astService.stringLiteral(this.atomicClasses.join(" "));
+    }
+
     return this.astService.stringLiteral(this.className);
   }
 }

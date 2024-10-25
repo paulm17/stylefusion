@@ -3,16 +3,23 @@ import type { ThemeArgs } from './theme';
 
 type Primitve = string | null | undefined | boolean | number;
 
-type CssArg = ((themeArgs: ThemeArgs) => CSSObjectNoCallback) | CSSObjectNoCallback;
-type CssFn = (themeArgs: ThemeArgs) => string | number;
+type stringOrNumber = string | number;
+type value = CSSObjectNoCallback | nestedCSSObject;
+type CssArg = ((themeArgs: ThemeArgs) => value) | value;
+type CssFn = (themeArgs: ThemeArgs) => stringOrNumber;
+
+// Helper type for nested CSS objects
+type nestedCSSObject = {
+  [key: string]: stringOrNumber | nestedCSSObject;
+};
 
 interface Css {
   /**
    * @returns {string} The generated css class name to be referenced.
    */
-  (arg: TemplateStringsArray, ...templateArgs: (Primitve | CssFn)[]): string;
+  (arg: nestedCSSObject, ...templateArgs: (Primitve | CssFn )[]): string;
   /**
-   * @returns {string} The generated css class name to be referenced.
+   * @returns {string} The generated css class name to be referenced. 
    */
   (...arg: CssArg[]): string;
 }

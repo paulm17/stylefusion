@@ -69,6 +69,12 @@ export type ExtendTheme<
 > = ThemeInput<Options['colorScheme']> &
   Options['tokens'] & {
     vars: Options['tokens'];
+    applyMixin: (
+      cmd: "hover" | "where-rtl" | "where-ltr",
+      styles: CSSObject<any>,
+    ) => Record<string, CSSObject<any>>;
+    getDirectionSelector: (key: any) => string;
+    getHoverSelector: (key: any) => string;
     applyStyles: (
       colorScheme: Options['colorScheme'],
       styles: CSSObject<any>,
@@ -146,7 +152,10 @@ export function extendTheme<
   } as unknown as ExtendTheme<{ colorScheme: Options['colorScheme']; tokens: Options['tokens'] }>;
 
   finalTheme.getColorSchemeSelector = (colorScheme: string) => {
-    if (!theme.getSelector) {
+    if (colorScheme.includes("where")) {
+      colorScheme = colorScheme.replace("where-", "");
+      return `:where([data-raikou-color-scheme='${colorScheme}']) &`;
+    } else if (!theme.getSelector) {
       return `@media (prefers-color-scheme: ${colorScheme})`;
     }
     return `:where(${theme.getSelector(colorScheme, {})}) &`;
@@ -156,6 +165,33 @@ export function extendTheme<
     return {
       [this.getColorSchemeSelector(colorScheme)]: styles,
     };
+  };
+
+  finalTheme.getDirectionSelector = (direction: "ltr" | "rtl" | "where-ltr" | "where-rtl") => {    
+    if (direction === "ltr" || direction === "rtl") {
+      return `[dir='${direction}'] &`;
+    } else {
+      return `:where([dir='${direction.replace("where-", "")}']) &`;
+    }    
+  };
+
+  finalTheme.getHoverSelector = (key: string) => {   
+    return `@media (${key}: ${key})`;
+  };
+
+  finalTheme.applyMixin = function applyHover(cmd, styles) {
+    if (cmd === "hover") {
+      return {
+        [this.getHoverSelector("hover")]: styles,
+        [this.getHoverSelector("none")]: styles,
+      };
+    } else if (["ltr", "rtl", "where-ltr", "where-rtl"].includes(cmd)) {
+      return {
+        [this.getDirectionSelector(cmd)]: styles,
+      };
+    }
+
+    return {};
   };
 
   return finalTheme;

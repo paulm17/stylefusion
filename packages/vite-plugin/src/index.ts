@@ -9,12 +9,15 @@ import {
 } from '@stylefusion/react/utils';
 import { transformAsync } from '@babel/core';
 import baseWywPluginPlugin, { type VitePluginOptions } from './vite-plugin';
+import { replaceStylesObject } from './utils/getStyleObject';
 
 export interface PigmentOptions extends Omit<VitePluginOptions, 'themeArgs'> {
   /**
    * The theme object that you want to be passed to the `styled` function
    */
   theme?: Theme;
+  rawTheme?: Theme;
+  atomic?: boolean;
 }
 
 type PigmentMeta = {
@@ -50,6 +53,7 @@ const MATERIAL_WRAPPER_LIB = '@mui/material-pigment-css';
 export function pigment(options: PigmentOptions) {
   const {
     theme,
+    rawTheme,
     babelOptions = {},
     preprocessor,
     transformLibraries = [],
@@ -79,12 +83,35 @@ export function pigment(options: PigmentOptions) {
           return generateTokenCss(theme);
         }
         if (id === VIRTUAL_THEME_FILE) {
-          return generateThemeSource(theme);
+          return generateThemeSource(theme, rawTheme);
         }
         return null;
       },
     };
   }
+
+  // function preBabelPlugin(): Plugin {
+  //   return {
+  //     name: 'pigment-css-pre-plugin',
+  //     enforce: 'pre',
+  //     async transform(code, id) {
+  //       if (!isZeroRuntimeProcessableFile(id, finalTransformLibraries)) {
+  //         return null;
+  //       }
+  //       try {
+  //         code = replaceStylesObject(id, code, rawTheme);
+
+  //         return {
+  //           code: code,
+  //           map: null,
+  //         }
+  //       } catch (ex) {
+  //         console.error(ex);
+  //         return null;
+  //       }
+  //     },
+  //   };
+  // }
 
   function intermediateBabelPlugin(): Plugin {
     return {
@@ -96,12 +123,15 @@ export function pigment(options: PigmentOptions) {
           return null;
         }
         try {
+          code = replaceStylesObject(id, code, rawTheme);
+
           const result = await transformAsync(code, {
             filename,
             babelrc: false,
             configFile: false,
             plugins: [[`${process.env.RUNTIME_PACKAGE_NAME}/exports/sx-plugin`]],
-          });
+          });          
+
           return {
             code: result?.code ?? code,
             map: result?.map,
@@ -153,6 +183,7 @@ export function pigment(options: PigmentOptions) {
   };
 
   const zeroPlugin = baseWywPluginPlugin({
+    rawTheme,
     themeArgs: {
       theme,
     },
@@ -175,6 +206,7 @@ export function pigment(options: PigmentOptions) {
   return [
     updateConfigPlugin(),
     injectMUITokensPlugin(),
+    // preBabelPlugin(),
     transformSx ? intermediateBabelPlugin() : null,
     zeroPlugin,
   ];

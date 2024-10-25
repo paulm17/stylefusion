@@ -1,6 +1,6 @@
 {
   "name": "@stylefusion/vite-plugin",
-  "version": "0.0.24",
+  "version": "0.0.24-1",
   "main": "build/index.js",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",
@@ -30,6 +30,7 @@
   "dependencies": {
     "@babel/core": "^7.24.4",
     "@babel/preset-typescript": "^7.24.1",
+    "@emotion/css": "^11.11.2",
     "@stylefusion/react": "workspace:^",
     "@wyw-in-js/shared": "^0.5.4",
     "@wyw-in-js/transform": "^0.5.4",

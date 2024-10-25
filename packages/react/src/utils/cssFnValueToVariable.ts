@@ -14,7 +14,9 @@ export type PluginCustomOptions = {
   /**
    * Object to pass as parameter to the styled css callback functions.
    */
-  themeArgs?: { theme?: Theme };
+  themeArgs?: { theme?: Theme, rawTheme?: Theme };
+  atomic?: boolean;
+  rawTheme?: Theme;
   /**
    * Customize the output CSS. Mainly used for RTL support right now.
    */

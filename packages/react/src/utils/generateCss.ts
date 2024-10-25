@@ -7,10 +7,11 @@ export function generateTokenCss(theme?: Theme) {
   }
   // use emotion to serialize the object to css string
   const { styles } = serializeStyles(theme.generateStyleSheets?.() || []);
+
   return styles;
 }
 
-export function generateThemeTokens(theme?: Theme) {
+export function generateThemeTokens(theme?: Theme, rawTheme: any = {}) {
   if (!theme || typeof theme !== 'object') {
     return {};
   }
@@ -18,6 +19,7 @@ export function generateThemeTokens(theme?: Theme) {
   if ('vars' in theme && theme.vars) {
     return {
       vars: theme.vars,
+      theme: rawTheme,
     };
   }
   return {};

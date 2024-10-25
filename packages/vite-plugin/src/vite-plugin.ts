@@ -22,6 +22,9 @@ import {
 } from '@wyw-in-js/transform';
 import { matchAdapterPath, type PluginCustomOptions } from '@stylefusion/react/utils';
 import { styledEngineMockup } from '@stylefusion/react/internal';
+// import { extractStylesObject, removeFile, replaceStylesObject } from './utils/getStyleObject';
+// import { css, cache as emotionCache } from './utils/emotion';
+// import { getHelpers } from './utils/helpers';
 
 export type VitePluginOptions = {
   debug?: IFileReporterOptions | false | null | undefined;
@@ -54,7 +57,11 @@ const addMaterialUIOverriedContext = (originalContext: Record<string, unknown>) 
   return originalContext;
 };
 
+// const styleClasses = new Map<string, string>();
+
 export default function wywVitePlugin({
+  rawTheme,  
+  atomic,
   debug,
   include,
   exclude,
@@ -77,6 +84,7 @@ export default function wywVitePlugin({
   // <dependency id, targets>
   const targets: { dependencies: string[]; id: string }[] = [];
   const cache = new TransformCacheCollection();
+
   return {
     name: 'vite-plugin-zero-runtime',
     enforce: 'post',
@@ -98,6 +106,7 @@ export default function wywVitePlugin({
     },
     load(url: string) {
       const [id] = url.split('?', 1);
+
       return cssLookup.get(id);
     },
     handleHotUpdate(ctx) {
@@ -131,6 +140,7 @@ export default function wywVitePlugin({
       // Converts path separator as per platform, even on Windows, path segments have `/` instead of the usual `\`,
       // so this function replaces such path separators.
       const id = path.normalize(filePath);
+
       // Main modification starts
       if (id in cssLookup) {
         return null;
@@ -190,7 +200,37 @@ export default function wywVitePlugin({
       const presets = new Set(
         Array.isArray(other.babelOptions?.presets) ? other.babelOptions?.presets : [],
       );
-      presets.add('@babel/preset-typescript');
+      presets.add('@babel/preset-typescript');    
+
+      // if (id.endsWith(".tsx")) {
+      //   console.log("vite-plugin, wywVitePlugin transform extractStylesObject");
+
+      //   const styleObject = extractStylesObject(code);
+      //   const styles = new Function("theme", "u", styleObject);
+      //   const stylesObject = typeof styles === 'function' ? styles(rawTheme, getHelpers(rawTheme as any)) : styles;
+
+      //   if (!stylesObject) {
+      //     return null;
+      //   }
+
+      //   const cssClassNames = Object.keys(stylesObject).reduce((acc, key) => {
+      //     const value = stylesObject[key];
+      //     const parsedValue = typeof value === 'function' ? value(rawTheme) : value;
+      //     return { ...acc, [key]: css(parsedValue) };
+      //   }, {})
+
+      //   const classNamesArr = [] as string[];
+
+      //   Object.entries(cssClassNames).forEach(([_, className]) => {
+      //     const cssText = emotionCache.registered[className as string];
+
+      //     styleClasses.set(className as string, cssText);
+      //     classNamesArr.push(className as string);
+      //   })
+
+      //   // replace styles object with classNames
+      //   // code = replaceStylesObject(code, classNamesArr);
+      // }
 
       try {
         const result = await transform(
@@ -250,14 +290,36 @@ export default function wywVitePlugin({
         );
 
         let { cssText, dependencies } = result;
-        
+
         if (!cssText) {
           return null;
-        }
+        }        
 
-        const selector = cssText.match(/^\.[a-z0-9]{6,8}/)!;
-        const selectorNoDot = selector[0].replace(".", "");
-        cssText = cssText.replace(` cssText:${selectorNoDot}`, "");
+        if (atomic) {
+          // instead loop through rules to generate cssText output
+          // cssText from transform service mangles css found in cssText
+          const rules = {} as Record<string, string>;
+
+          Object.keys(result.rules!).forEach((key) => {
+            const rule = result.rules![key];
+            rules[key] = rule!.cssText;
+          })
+
+          cssText = Object.entries(rules)
+            .map(([selector, styles]) => `${selector}{${styles}}`)
+            .join('');
+        } else {
+          cssText = cssText.replace(new RegExp(/_where/, 'g'), "where");       
+
+          // if (styleClasses.size > 0) {
+          //   let newStyles = "";
+          //   styleClasses.forEach((cssText, className) => {
+          //     newStyles += `.${className}{${cssText}}`              
+          //   })
+
+          //   cssText += newStyles;
+          // }
+        }
 
         dependencies ??= [];
 
@@ -303,6 +365,12 @@ export default function wywVitePlugin({
             devServer.reloadModule(cssModule);
           }
         }
+
+        // clear styles
+        // styleClasses.clear();
+
+        // remove tmp file
+        // removeFile();
 
         return { code: result.code, map: result.sourceMap };
       } catch (ex) {
