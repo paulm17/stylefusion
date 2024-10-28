@@ -16,7 +16,7 @@ import type { IOptions } from './styled';
 import { cache, css } from '../utils/emotion';
 import type { Primitive, TemplateCallback } from './keyframes';
 import { processAtomicStyles } from "./css-processor"
-import { preset } from '../utils/preset';
+import { colorMix, preset } from '../utils/preset';
 
 /**
  * @description Scope css class generation similar to css from emotion.
@@ -121,9 +121,12 @@ export class CssProcessor extends BaseProcessor {
     const { atomic, themeArgs } = this.options as IOptions;
 
     // run through the preset function if Raikou theme is provided
-    if (themeArgs?.theme) {
+    if (themeArgs?.theme && '--raikou-scale' in themeArgs.theme) {
       styleObjOrTaggged = preset(styleObjOrTaggged);
     }
+
+    // apply colorMix function to the style object
+    styleObjOrTaggged = colorMix(styleObjOrTaggged);
 
     if (!atomic) {
       const cssClassName = css(styleObjOrTaggged, ...args);

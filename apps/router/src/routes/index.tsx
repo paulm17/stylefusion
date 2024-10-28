@@ -7,7 +7,7 @@ export const Route = createFileRoute('/')({
 
 const divCss = css({
   background: "green",
-  color: "white",
+  color: "lighten(#00ff89, 0.8)",
   fontSize: "2rem",
   padding: "2rem",
 })
