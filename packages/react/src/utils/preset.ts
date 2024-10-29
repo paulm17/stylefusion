@@ -41,6 +41,8 @@ export function preset(obj: any, prefix: string = "") {
             obj[key] = obj[key].replace(emRegExp, (_: any, value: any) => {
               return em(value);
             });
+          } else if (/^-?\d+/.test(obj[key])) {
+            obj[key] = remStrict(obj[key]);
           }
         } else {
           if (obj[key].includes("rem(")) {

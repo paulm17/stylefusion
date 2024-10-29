@@ -7,6 +7,9 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 export default defineConfig({
   plugins: [
     pigment({
+      // theme: {
+      //   "--raikou-scale": 1,
+      // },
     }),
     TanStackRouterVite({}), 
     react()

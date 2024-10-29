@@ -6,6 +6,7 @@ export const Route = createFileRoute('/')({
 })
 
 const divCss = css({
+  "--foo": "10px",
   background: "green",
   color: "lighten(#00ff89, 0.8)",
   fontSize: "2rem",
