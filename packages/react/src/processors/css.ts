@@ -121,7 +121,7 @@ export class CssProcessor extends BaseProcessor {
     const { atomic, themeArgs } = this.options as IOptions;
 
     // run through the preset function if Raikou theme is provided
-    if (themeArgs?.theme && '--raikou-scale' in themeArgs.theme) {
+    if (themeArgs?.theme && 'scale' in themeArgs.theme.vars) {
       styleObjOrTaggged = preset(styleObjOrTaggged);
     }
 
