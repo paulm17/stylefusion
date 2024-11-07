@@ -1,6 +1,6 @@
 {
   "name": "@stylefusion/vite-plugin",
-  "version": "0.0.24-4",
+  "version": "0.0.24-5",
   "main": "build/index.js",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",

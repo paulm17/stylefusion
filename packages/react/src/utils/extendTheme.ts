@@ -1,5 +1,6 @@
 import { prepareCssVars } from '@mui/system/cssVars';
 import type { CSSObject } from '../base';
+import { NestedCSSObject } from '../css';
 
 export interface ThemeInput<ColorScheme extends string = string> extends Record<string, any> {
   /**
@@ -70,14 +71,14 @@ export type ExtendTheme<
   Options['tokens'] & {
     vars: Options['tokens'];
     applyMixin: (
-      cmd: "hover" | "where-rtl" | "where-ltr",
-      styles: CSSObject<any>,
+      cmd: "hover" | "ltr" | "rtl" | "where-ltr" | "where-rtl",
+      styles: CSSObject<any> | NestedCSSObject,
     ) => Record<string, CSSObject<any>>;
     getDirectionSelector: (key: any) => string;
     getHoverSelector: (key: any) => string;
     applyStyles: (
       colorScheme: Options['colorScheme'],
-      styles: CSSObject<any>,
+      styles: CSSObject<any> | NestedCSSObject,
     ) => Record<string, CSSObject<any>>;
     getColorSchemeSelector: (colorScheme: Options['colorScheme']) => string;
     generateStyleSheets: () => Array<Record<string, any>>;
