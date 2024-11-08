@@ -1,6 +1,6 @@
 {
   "name": "@stylefusion/react",
-  "version": "0.0.24-6",
+  "version": "0.0.25",
   "main": "build/index.js",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",
@@ -8,18 +8,14 @@
   "description": "A zero-runtime CSS-in-JS library.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mui/pigment-css.git",
+    "url": "git+https://github.com/paulm17/stylefusion.git",
     "directory": "packages/react"
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mui/pigment-css/issues"
+    "url": "https://github.com/paulm17/stylefusion/issues"
   },
-  "homepage": "https://github.com/mui/pigment-css/tree/master/README.md",
-  "funding": {
-    "type": "opencollective",
-    "url": "https://opencollective.com/mui-org"
-  },
+  "homepage": "https://github.com/paulm17/stylefusion/tree/master/README.md",
   "scripts": {
     "clean": "rimraf build types processors utils",
     "watch": "tsup --watch --clean false",
