@@ -1,6 +1,6 @@
 {
   "name": "@stylefusion/react",
-  "version": "0.0.24-5",
+  "version": "0.0.24-6",
   "main": "build/index.js",
   "module": "build/index.mjs",
   "types": "build/index.d.ts",
