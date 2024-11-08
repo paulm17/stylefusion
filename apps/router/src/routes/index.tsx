@@ -13,6 +13,18 @@ const divCss = css({
   padding: "2rem"
 })
 
+const div2Css = css(({ theme }) => ({
+  fontSize: "2rem",
+  ...theme.applyMedia({
+    features: {
+      "max-width": "600px"
+    }
+  }, {
+    background: "green",
+    color: "red"
+  })
+}));
+
 function HomeComponent() {
   return (
     <>
@@ -26,6 +38,7 @@ function HomeComponent() {
         }}
       >        
         <div className={divCss}>Home</div>
+        <div className={div2Css}>Bar</div>
       </div>
     </>
   );

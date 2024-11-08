@@ -1,6 +1,7 @@
 import { prepareCssVars } from '@mui/system/cssVars';
 import type { CSSObject } from '../base';
 import { NestedCSSObject } from '../css';
+import { Device, MediaFeatureObject, MediaQueryBuilder } from './mediaQueryBuilder';
 
 export interface ThemeInput<ColorScheme extends string = string> extends Record<string, any> {
   /**
@@ -73,9 +74,10 @@ export type ExtendTheme<
     applyMixin: (
       cmd: "hover" | "ltr" | "rtl" | "where-ltr" | "where-rtl",
       styles: CSSObject<any> | NestedCSSObject,
-    ) => Record<string, CSSObject<any>>;
+    ) => Record<string, CSSObject<any> | string>;
     getDirectionSelector: (key: any) => string;
     getHoverSelector: (key: any) => string;
+    applyMedia: (query: MediaQueryOptions, styles: CSSObject<any> | NestedCSSObject) => Record<string, CSSObject<any>>;
     applyStyles: (
       colorScheme: Options['colorScheme'],
       styles: CSSObject<any> | NestedCSSObject,
@@ -85,6 +87,13 @@ export type ExtendTheme<
   };
 
 export type Theme = Record<string, any>;
+
+type MediaQueryOptions = {
+  devices?: Device | Device[]; // Device(s) like "screen", "tv", etc.
+  features?: MediaFeatureObject | MediaFeatureObject[]; // Feature(s) to add to the query
+  only?: boolean; // Whether to use "only" in the query
+  operator?: "and" | "or"; // Operator for joining features
+};
 
 /**
  * A utility to tell zero-runtime to generate CSS variables for the theme.
@@ -180,7 +189,28 @@ export function extendTheme<
     return `@media (${key}: ${key})`;
   };
 
-  finalTheme.applyMixin = function applyHover(cmd, styles) {
+  finalTheme.applyMedia = function applyMedia(query, styles) {
+    const builder = new MediaQueryBuilder();
+
+    if (query.devices) {
+      builder.addDevice(query.devices);
+    }
+    if (query.features) {
+      builder.addFeature(query.features);
+    }
+    if (query.only !== undefined) {
+      builder.setOnly(query.only);
+    }
+    if (query.operator) {
+      builder.setOperator(query.operator);
+    }
+
+    return {
+      [builder.build()]: styles,
+    }
+  };
+
+  finalTheme.applyMixin = function applyMixin(cmd, styles) {
     if (cmd === "hover") {
       return {
         [this.getHoverSelector("hover")]: styles,
