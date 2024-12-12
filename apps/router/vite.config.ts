@@ -2,6 +2,7 @@ import { extendTheme, pigment } from '@stylefusion/vite-plugin';
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 const theme = extendTheme({
   cssVarPrefix: 'raikou',
@@ -12,6 +13,7 @@ const theme = extendTheme({
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    nodePolyfills(),
     pigment({
       atomic: false,
       theme,
@@ -21,12 +23,10 @@ export default defineConfig({
     react(),
   ],
   optimizeDeps: {
-    include: ['prop-types', 'react-is'],
+    exclude: ['vite-plugin-node-polyfills']
   },
   resolve: {
     alias: {
-      'prop-types': 'prop-types/prop-types.js',
-      'react-is': 'react-is/cjs/react-is.development.js',
     },
   },
 });

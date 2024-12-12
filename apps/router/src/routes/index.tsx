@@ -6,7 +6,9 @@ export const Route = createFileRoute('/')({
 });
 
 const div1 = css({
-  color: 'red'
+  backgroundColor: 'blue',
+  color: 'red',
+  fontWeight: 'bold'
 });
 
 function HomeComponent() {
